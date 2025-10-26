@@ -1,0 +1,49 @@
+services:
+  # Baza danych PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: electic_shop_postgres
+    environment:
+      POSTGRES_DB: electic_shop_db
+      POSTGRES_USER: electic_user
+      POSTGRES_PASSWORD: electic_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - electic_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U electic_user -d electic_shop_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache Redis
+  redis:
+    image: redis:7-alpine
+    container_name: electic_shop_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - electic_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    command: redis-server --appendonly yes
+
+# Wolumeny dla persystencji danych
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# Sieć dla mikroserwisów
+networks:
+  electic_network:
+    driver: bridge

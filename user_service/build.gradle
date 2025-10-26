@@ -1,0 +1,96 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.7'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.google.protobuf' version '0.9.4'
+    id 'org.flywaydb.flyway' version '9.22.3'
+}
+
+group = 'pl.electic-shop'
+version = '0.0.1-SNAPSHOT'
+description = 'user_service'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    set('springGrpcVersion', "0.11.0")
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'io.grpc:grpc-services'
+    implementation 'org.springframework.grpc:spring-grpc-spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    runtimeOnly 'org.postgresql:postgresql'
+    compileOnly 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.grpc:spring-grpc-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation 'me.paulschwarz:spring-dotenv:3.0.0'
+    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+    implementation "org.springframework.boot:spring-boot-starter-thymeleaf"
+
+    annotationProcessor 'org.projectlombok:lombok'
+
+
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+}
+
+flyway {
+    def dbHost = System.getenv("POSTGRES_HOST") ?: "localhost"
+    def dbPort = System.getenv("POSTGRES_PORT") ?: "5433"
+    def dbName = System.getenv("POSTGRES_DB") ?: "electic_shop_db"
+
+    url = "jdbc:postgresql://${dbHost}:${dbPort}/${dbName}"
+    user = System.getenv("POSTGRES_USER") ?: "electic_user"
+    password = System.getenv("POSTGRES_PASSWORD") ?: "electic_password"
+    cleanDisabled = false
+    locations = ["classpath:db/migration"]
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.grpc:spring-grpc-dependencies:${springGrpcVersion}"
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc'
+    }
+    plugins {
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java'
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {
+                option '@generated=omit'
+            }
+        }
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
