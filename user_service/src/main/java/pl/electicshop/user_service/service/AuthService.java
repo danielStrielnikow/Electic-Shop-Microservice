@@ -1,6 +1,7 @@
 package pl.electicshop.user_service.service;
 
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class AuthService {
     /**
      * Registers a new user with password hashing
      */
+    @Transactional
     public RegisterResponse registerUser(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new UserAlreadyExistException("User with this email already exist");

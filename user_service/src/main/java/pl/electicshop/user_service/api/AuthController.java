@@ -7,14 +7,19 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import pl.electicshop.user_service.api.request.LoginRequest;
 import pl.electicshop.user_service.api.request.RegisterRequest;
 import pl.electicshop.user_service.api.response.OperationResponse;
 import pl.electicshop.user_service.api.response.RegisterResponse;
 import pl.electicshop.user_service.api.response.UserJwtResponse;
+import pl.electicshop.user_service.api.response.UserResponse;
 import pl.electicshop.user_service.service.AuthService;
 import pl.electicshop.user_service.service.JwtTokenService;
+import pl.electicshop.user_service.service.UserService;
+
+import java.util.UUID;
 
 /**
  * Authentication Controller (SRP - handles only HTTP layer)
@@ -26,6 +31,7 @@ import pl.electicshop.user_service.service.JwtTokenService;
 public class AuthController {
     private final AuthService authService;
     private final JwtTokenService jwtTokenService;
+    private final UserService userService;
 
     @PostMapping("/login")
     public ResponseEntity<UserJwtResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
@@ -53,5 +59,12 @@ public class AuthController {
         response.addCookie(clearCookie);
 
         return ResponseEntity.ok(OperationResponse.success("Logout successful"));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> getCurrentUser(Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        UserResponse user = userService.getUserById(userId);
+        return ResponseEntity.ok(user);
     }
 }

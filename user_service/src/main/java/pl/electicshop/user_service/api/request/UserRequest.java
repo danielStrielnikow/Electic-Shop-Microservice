@@ -2,12 +2,10 @@ package pl.electicshop.user_service.api.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import pl.electicshop.user_service.model.enums.Role;
 
 /**
  * DTO for creating a new user
@@ -25,8 +23,5 @@ public class UserRequest {
     @NotBlank(message = "Password is required")
     @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
     private String password;
-
-    @NotNull(message = "User role is required")
-    private Role userRole;
 }
 

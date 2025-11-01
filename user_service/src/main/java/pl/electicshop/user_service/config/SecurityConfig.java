@@ -36,13 +36,15 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints (no authentication required)
                         .requestMatchers("/auth/login", "/auth/register", "/auth/logout", "/auth/refresh",
                                 "/auth/forgot-password", "/auth/validate-password-token/**",
-                                "auth/resend-verification-email", "/auth/verify-email/**",
-                                "/auth/reset-password", "/auth/change-password",
+                                "/auth/resend-verification-email", "/auth/verify-email/**",
+                                "/auth/reset-password",
                                 "/auth/validate-verification-email-token/**",
                                 "/auth/email-verification-status",
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Admin endpoints (ADMIN role required)
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

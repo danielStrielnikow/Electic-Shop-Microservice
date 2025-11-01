@@ -6,8 +6,12 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.electicshop.user_service.api.request.UpdateUserRoleRequest;
+import pl.electicshop.user_service.api.response.UserResponse;
+import pl.electicshop.user_service.mapper.UserMapper;
 import pl.electicshop.user_service.model.User;
 import pl.electicshop.user_service.repository.UserRepository;
+
+import java.util.UUID;
 
 /**
  * User Service - Business logic for user management
@@ -18,6 +22,33 @@ import pl.electicshop.user_service.repository.UserRepository;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
+
+    /**
+     * Get user by UUID
+     */
+    public UserResponse getUserById(UUID uuid) {
+        User user = userRepository.findById(uuid)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + uuid));
+        return userMapper.toResponse(user);
+    }
+
+    /**
+     * Get user by email
+     */
+    public UserResponse getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+        return userMapper.toResponse(user);
+    }
+
+    /**
+     * Get User entity by UUID (internal use)
+     */
+    public User getUserEntityById(UUID uuid) {
+        return userRepository.findById(uuid)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + uuid));
+    }
 
     /**
      * Updates user role (ADMIN only operation)
