@@ -4,9 +4,9 @@ spring:
 
   # PostgreSQL Configuration
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5433}/${POSTGRES_DB:electic_shop_db}
-    username: ${POSTGRES_USER:electic_user}
-    password: ${POSTGRES_PASSWORD:electic_password}
+    url: jdbc:postgresql://localhost:5433/electric_shop_db
+    username: electric_user
+    password: electric_password
     driver-class-name: org.postgresql.Driver
 
   # JPA/Hibernate Configuration
@@ -28,23 +28,27 @@ spring:
   # Redis Configuration
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      host: localhost
+      port: 6379
+
+  # Spring Cloud Stream Configuration
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+      bindings:
+        userRegistration-out-0:
+          destination: user-registration
+        passwordReset-out-0:
+          destination: password-reset
 
 app:
   jwt:
-    secret: ${JWT_SECRET}
-    expiration: ${JWT_EXPIRATION}
-    refresh-expiration: ${JWT_REFRESH_EXPIRATION}
+    secret: ${JWT_SECRET:mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
+    expiration: ${JWT_EXPIRATION:3600000}
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
   security:
-    hmac-secret: ${HMAC_SECRET}
-  mail:
-    from: ${MAIL_FROM}
-    password-reset:
-      subject: ${PASSWORD_RESET_SUBJECT}
-      expiry-minutes: ${PASSWORD_RESET_EXPIRY_MINUTES}
-    email-verification:
-      subject: ${EMAIL_VERIFICATION_SUBJECT}
-      expiry-minutes: ${EMAIL_VERIFICATION_EXPIRY_MINUTES}
-  url:
-    front: ${APP_BASE_URL}
+    hmac-secret: ${HMAC_SECRET:xR9pL2mN8vQ4tY7wE3kS6jH1bC5fG9zX0aM4nP8qW2uV}
+server:
+  port: 80

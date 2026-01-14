@@ -1,0 +1,21 @@
+// Main build file for Electric Shop microservices platform
+
+allprojects {
+    group = 'pl.electric-shop'
+    version = '0.0.1-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+// Configure subprojects
+subprojects {
+    apply plugin: 'java'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+}

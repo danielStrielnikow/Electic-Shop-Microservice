@@ -1,0 +1,23 @@
+plugins {
+    id 'java'
+    id 'java-library'
+}
+
+group = 'pl.electric-shop'
+version = '0.0.1-SNAPSHOT'
+description = 'common-events'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+}

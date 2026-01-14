@@ -1,0 +1,5 @@
+rootProject.name = 'electric_shop'
+
+include 'common-events'
+include 'user_service'
+include 'notification_service'

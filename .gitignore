@@ -4,13 +4,25 @@
 # Docker volumes
 docker-volumes/
 
-# IDE
-.idea/
-.vscode/
-*.iml
+# Gradle
+.gradle/
+build/
+!**/src/**/build/
 
-# OS
+# IntelliJ / IDE
+.idea/
+*.iml
+*.iws
+.vscode/
+
+# Systemowe
 .DS_Store
 Thumbs.db
 
-.claude
+# Spring Boot / Aplikacja
+*.jar
+*.war
+.env.local
+
+# Logi
+*.log

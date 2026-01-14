@@ -2,19 +2,19 @@ services:
   # Baza danych PostgreSQL
   postgres:
     image: postgres:16-alpine
-    container_name: electic_shop_postgres
+    container_name: electric_shop_postgres
     environment:
-      POSTGRES_DB: electic_shop_db
-      POSTGRES_USER: electic_user
-      POSTGRES_PASSWORD: electic_password
+      POSTGRES_DB: electric_shop_db
+      POSTGRES_USER: electric_user
+      POSTGRES_PASSWORD: electric_password
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - electic_network
+      - electric_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U electic_user -d electic_shop_db"]
+      test: ["CMD-SHELL", "pg_isready -U electric_user -d electric_shop_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,13 +22,13 @@ services:
   # Cache Redis
   redis:
     image: redis:7-alpine
-    container_name: electic_shop_redis
+    container_name: electric_shop_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - electic_network
+      - electric_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -36,14 +36,70 @@ services:
       retries: 5
     command: redis-server --appendonly yes
 
+  # Zookeeper (wymagany przez Kafkę)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: electric_shop_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    networks:
+      - electric_network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kafka Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: electric_shop_kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - electric_network
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # Konfiguracja dla połączeń lokalnych (localhost) i wewnętrznych (kafka)
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      # Automatyczne tworzenie topics
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 # Wolumeny dla persystencji danych
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
+  kafka_data:
+    driver: local
+  zookeeper_data:
+    driver: local
 
 # Sieć dla mikroserwisów
 networks:
-  electic_network:
+  electric_network:
     driver: bridge

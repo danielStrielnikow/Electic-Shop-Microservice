@@ -98,7 +98,7 @@ Database (PostgreSQL)
 
 ### Package Structure
 ```
-pl.electicshop.user_service/
+pl.electricshop.user_service/
 ├── api/                        # REST Controllers & DTOs
 │   ├── AuthController          # Authentication endpoints
 │   ├── PasswordController      # Password management
@@ -154,7 +154,7 @@ pl.electicshop.user_service/
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd electic_shop
+cd electric_shop
 ```
 
 2. Create `.env` file in the root directory (use `.env.example` as template):
@@ -390,9 +390,9 @@ Common error codes:
 ```
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5433
-POSTGRES_DB=electic_shop_db
-POSTGRES_USER=electic_user
-POSTGRES_PASSWORD=electic_password
+POSTGRES_DB=electric_shop_db
+POSTGRES_USER=electric_user
+POSTGRES_PASSWORD=electric_password
 ```
 
 ### Redis Configuration
