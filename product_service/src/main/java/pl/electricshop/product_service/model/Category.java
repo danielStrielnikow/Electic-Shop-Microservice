@@ -1,12 +1,15 @@
 package pl.electricshop.product_service.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import pl.electricshop.product_service.base.BaseEntity;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -16,7 +19,7 @@ import java.util.Set;
 public class Category extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private Long categoryId;
+    private UUID categoryId;
 
     private String categoryName;
 
