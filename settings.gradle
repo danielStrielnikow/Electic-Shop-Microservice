@@ -1,5 +1,7 @@
 rootProject.name = 'electric_shop'
 
 include 'common-events'
+include 'eureka_server'
+include 'api_gateway'
 include 'user_service'
 include 'notification_service'

@@ -1,0 +1,109 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      # Enable service discovery based routing
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      # Route definitions
+      routes:
+        # User Service - Auth endpoints
+        - id: user-service-auth
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=1
+
+        # User Service - Admin endpoints
+        - id: user-service-admin
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/admin/**
+          filters:
+            - StripPrefix=1
+
+        # User Service - Address endpoints
+        - id: user-service-addresses
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/addresses/**
+          filters:
+            - StripPrefix=1
+
+        # User Service - User endpoints
+        - id: user-service-users
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=1
+
+        # Notification Service (if needed for direct access)
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - StripPrefix=1
+
+# Eureka client configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+
+# JWT Configuration (same secret as user_service!)
+app:
+  jwt:
+    secret: ${JWT_SECRET:mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
+  gateway:
+    # Public endpoints that don't require JWT validation
+    public-paths:
+      - /api/auth/login
+      - /api/auth/register
+      - /api/auth/logout
+      - /api/auth/refresh
+      - /api/auth/forgot-password
+      - /api/auth/validate-password-token/**
+      - /api/auth/resend-verification-email
+      - /api/auth/verify-email/**
+      - /api/auth/reset-password
+      - /api/auth/validate-verification-email-token/**
+      - /api/auth/email-verification-status
+      - /api/v3/api-docs/**
+      - /api/swagger-ui/**
+      - /api/swagger-ui.html
+      - /actuator/**
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    pl.electricshop.gateway: DEBUG
+    reactor.netty: INFO

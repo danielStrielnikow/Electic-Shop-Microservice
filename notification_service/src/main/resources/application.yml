@@ -1,56 +1,78 @@
-  spring:
-    application:
-      name: notification_service
+spring:
+  application:
+    name: notification-service
 
-    # Mail Configuration
-    mail:
-      host: ${MAIL_HOST}
-      port: ${MAIL_PORT}
-      username: ${MAIL_USERNAME}
-      password: ${MAIL_PASSWORD}
-      properties:
-        mail:
-          smtp:
-            auth: true
-            starttls:
-              enable: true
-              required: true
+  # Mail Configuration
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 
-    # Thymeleaf Configuration
-    thymeleaf:
-      prefix: classpath:/templates/
-      suffix: .html
-      mode: HTML
-      encoding: UTF-8
-      cache: false
+  # Thymeleaf Configuration
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    cache: false
 
-    # Spring Cloud Stream Configuration
-    cloud:
-      function:
-        definition: userRegistration;passwordReset
-      stream:
-        kafka:
-          binder:
-            brokers: localhost:9092
-        bindings:
-          userRegistration-in-0:
-            destination: user-registration
-            group: notification-service-group
-          passwordReset-in-0:
-            destination: password-reset
-            group: notification-service-group
+  # Spring Cloud Stream Configuration
+  cloud:
+    function:
+      definition: userRegistration;passwordReset
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+      bindings:
+        userRegistration-in-0:
+          destination: user-registration
+          group: notification-service-group
+        passwordReset-in-0:
+          destination: password-reset
+          group: notification-service-group
 
-  # Application Configuration
-  app:
-    mail:
-      from: ${MAIL_FROM}
-      password-reset:
-        subject: ${PASSWORD_RESET_SUBJECT}
-        expiry-minutes: ${PASSWORD_RESET_EXPIRY_MINUTES}
-      email-verification:
-        subject: ${EMAIL_VERIFICATION_SUBJECT}
-        expiry-minutes: ${EMAIL_VERIFICATION_EXPIRY_MINUTES}
-    url:
-      front: ${APP_BASE_URL}
-  server:
-    port: 81
+# Application Configuration
+app:
+  mail:
+    from: ${MAIL_FROM}
+    password-reset:
+      subject: ${PASSWORD_RESET_SUBJECT}
+      expiry-minutes: ${PASSWORD_RESET_EXPIRY_MINUTES}
+    email-verification:
+      subject: ${EMAIL_VERIFICATION_SUBJECT}
+      expiry-minutes: ${EMAIL_VERIFICATION_EXPIRY_MINUTES}
+  url:
+    front: ${APP_BASE_URL}
+
+server:
+  port: 8082
+
+# Eureka Client Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
