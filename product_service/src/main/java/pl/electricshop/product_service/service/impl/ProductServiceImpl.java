@@ -22,8 +22,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -70,14 +71,14 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public ProductDTO addProduct(UUID categoryId, ProductDTO productDTO) {
-        Set<Category> category = fetchCategoryById(categoryId);
+    public ProductDTO addProduct(String categoryNumber, ProductDTO productDTO) {
+        Category category = fetchCategoryById(categoryNumber);
 
         if (productRepository.existsByProductNameIgnoreCase(productDTO.getProductName())) {
             throw new APIException(AppError.ERROR_PRODUCT_EXISTS);
         }
 
-        Product product = productMapper.toEntityDTO(productDTO);
+        Product product = productMapper.toEntity(productDTO);
 
         if (productDTO.getImage() == null || productDTO.getImage().isEmpty()) {
             product.setImage(defaultImage);
@@ -90,7 +91,7 @@ public class ProductServiceImpl implements ProductService {
         product.setSpecialPrice(calculateSpecialPrice(product.getPrice(), product.getDiscount()));
 
         Product savedProduct = productRepository.save(product);
-        ProductDTO savedProductDTO = productMapper.toResponseDTO(savedProduct);
+        ProductDTO savedProductDTO = productMapper.toDTO(savedProduct);
         savedProductDTO.setImage(constructImageUrl(savedProduct.getImage()));
         return savedProductDTO;
     }
@@ -151,7 +152,7 @@ public class ProductServiceImpl implements ProductService {
 
         List<ProductDTO> productDTOS = productPage.getContent().stream()
                 .map(product -> {
-                    ProductDTO productDTO = productMapper.toResponseDTO(product);
+                    ProductDTO productDTO = productMapper.toDTO(product);
                     productDTO.setImage(constructImageUrl(product.getImage()));
                     return productDTO;
                 })
@@ -169,15 +170,28 @@ public class ProductServiceImpl implements ProductService {
         return imageBaseUrl.endsWith("/") ? imageBaseUrl + imageName : imageBaseUrl + "/" + imageName;
     }
 
-    private Category fetchCategoryById(UUID categoryId) {
-        return categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
+    private Category fetchCategoryById(String categoryNumber) {
+        return categoryRepository.findByCategoryNumber(categoryNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryNumber", categoryNumber));
     }
 
-    private double calculateSpecialPrice(double price, double discount) {
-        if (discount < 0 || discount > 100) {
+    private BigDecimal calculateSpecialPrice(BigDecimal price, BigDecimal discount) {
+        // Sprawdzenie czy wartości nie są nullami
+        if (price == null || discount == null) {
+            return BigDecimal.ZERO;
+        }
+
+        // Porównanie: discount.compareTo(BigDecimal.ZERO) < 0 oznacza discount < 0
+        if (discount.compareTo(BigDecimal.ZERO) < 0 || discount.compareTo(new BigDecimal("100")) > 0) {
             throw new IllegalArgumentException("Discount must be between 0 and 100");
         }
-        return Math.max(0, price - (discount / 100 * price));
+
+        // Obliczenie: price * (1 - discount / 100)
+        BigDecimal discountRate = discount.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+        BigDecimal discountAmount = price.multiply(discountRate);
+        BigDecimal finalPrice = price.subtract(discountAmount);
+
+        // Math.max(0, finalPrice)
+        return finalPrice.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : finalPrice;
     }
 }

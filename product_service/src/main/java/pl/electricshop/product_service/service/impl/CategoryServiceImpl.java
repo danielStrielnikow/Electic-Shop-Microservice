@@ -45,8 +45,8 @@ public class CategoryServiceImpl implements CategoryService {
             throw new APIException(AppError.ERROR_CATEGORY_EXISTS);
         }
 
-        Category savedCategory = categoryRepository.save(categoryMapper.toEntityDTO(categoryDTO));
-        return categoryMapper.toResponseDTO(savedCategory);
+        Category savedCategory = categoryRepository.save(categoryMapper.toEntity(categoryDTO));
+        return categoryMapper.toDTO(savedCategory);
     }
 
     private CategoryResponse getCategoryResponse(Page<Category> categoryPage) {
@@ -56,7 +56,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         List<CategoryDTO> categoryDTOS = categoryPage.getContent()
                 .stream()
-                .map(categoryMapper::toResponseDTO)
+                .map(categoryMapper::toDTO)
                 .toList();
 
         return new CategoryResponse(

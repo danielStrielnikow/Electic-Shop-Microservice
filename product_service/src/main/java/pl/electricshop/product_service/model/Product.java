@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 import pl.electricshop.product_service.base.BaseEntity;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -20,10 +21,6 @@ import java.util.UUID;
 @ToString
 public class Product extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID productId;
-
     @Column(nullable = false, unique = true, name = "product_number")
     private String productNumber;
 
@@ -35,16 +32,23 @@ public class Product extends BaseEntity {
     @Size(min = 6, message = "Description must contain at least 6 characters")
     private String description;
 
-    private double price;
-    private double discount;
-    private double specialPrice;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal price;
 
+    @Column(precision = 10, scale = 2)
+    private BigDecimal discount;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal specialPrice;
+
+    @Column(nullable = false)
+    private Integer quantity = 0;
 
     @ManyToMany
     @JoinTable(
             name = "product_categories",
-            joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "category_id")
+            joinColumns = @JoinColumn(name = "product_id", referencedColumnName = "uuid"),
+            inverseJoinColumns = @JoinColumn(name = "category_id", referencedColumnName = "uuid")
     )
     private Set<Category> categories = new HashSet<>();
 

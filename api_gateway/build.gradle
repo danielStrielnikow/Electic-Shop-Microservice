@@ -28,6 +28,9 @@ dependencies {
     // Actuator for health checks
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+    // MacOS DNS resolver fix
+    runtimeOnly 'io.netty:netty-resolver-dns-native-macos:4.1.100.Final:osx-aarch_64'
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 

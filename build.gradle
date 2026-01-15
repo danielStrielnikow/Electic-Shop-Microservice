@@ -1,5 +1,12 @@
 // Main build file for Electric Shop microservices platform
 
+plugins {
+    id 'java'  // Full Java plugin for IDE compatibility
+}
+
+// Disable jar for root project (no source code here)
+jar.enabled = false
+
 allprojects {
     group = 'pl.electric-shop'
     version = '0.0.1-SNAPSHOT'

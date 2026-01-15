@@ -18,7 +18,7 @@ public interface ProductService {
     ProductResponse searchProductByKeyWord(String keyword, Integer pageNumber,
                                            Integer pageSize, String sortBy, String sortOrder);
 
-    ProductDTO addProduct(UUID categoryId, ProductDTO productDTO);
+    ProductDTO addProduct(String categoryNumber, ProductDTO productDTO);
 
 
     @Transactional

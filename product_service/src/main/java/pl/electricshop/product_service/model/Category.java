@@ -1,5 +1,6 @@
 package pl.electricshop.product_service.model;
 
+import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,20 +10,32 @@ import pl.electricshop.product_service.base.BaseEntity;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity(name = "categories")
+@Entity
+@Table(name = "categories")
 public class Category extends BaseEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID categoryId;
 
+    @Column(nullable = false, unique = true, name = "category_number")
+    private String categoryNumber;
+
+    @Column(name = "category_name")
     private String categoryName;
 
     @ManyToMany(mappedBy = "categories")
     private Set<Product> products = new HashSet<>();
+
+    @PrePersist
+    public void generateCategoryNumber() {
+        if (this.categoryNumber == null) {
+            this.categoryNumber = "CAT-" + NanoIdUtils.randomNanoId(
+                    NanoIdUtils.DEFAULT_NUMBER_GENERATOR,
+                    "0123456789ABCDEF".toCharArray(),
+                    6
+            );
+        }
+    }
 }

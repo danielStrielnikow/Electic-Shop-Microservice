@@ -1,9 +1,7 @@
 package pl.electricshop.product_service.service.impl;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import pl.electricshop.product_service.exception.APIException;
 import pl.electricshop.product_service.service.FileService;
 
 import java.io.File;
