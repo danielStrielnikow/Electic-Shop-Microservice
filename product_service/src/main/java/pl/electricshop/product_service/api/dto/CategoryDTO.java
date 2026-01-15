@@ -2,11 +2,13 @@ package pl.electricshop.product_service.api.dto;
 
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class CategoryDTO {
-    private Long categoryId;
+    private UUID categoryId;
     private String categoryName;
 }
