@@ -49,6 +49,28 @@ public class CategoryServiceImpl implements CategoryService {
         return categoryMapper.toDTO(savedCategory);
     }
 
+    @Override
+    public CategoryDTO updateCategory(CategoryDTO categoryDTO, String categoryNumber) {
+        Category existingCategory = fetchCategoryById(categoryNumber);
+
+        existingCategory.setCategoryName(categoryDTO.getCategoryName());
+        Category updatedCategory = categoryRepository.save(existingCategory);
+        return categoryMapper.toDTO(updatedCategory);
+    }
+
+
+
+    @Override
+    public void deleteCategoryById(String categoryNumber) {
+        Category existingCategory = fetchCategoryById(categoryNumber);
+        categoryRepository.delete(existingCategory);
+    }
+
+    private Category fetchCategoryById(String categoryNumber) {
+        return categoryRepository.findByCategoryNumber(categoryNumber)
+                .orElseThrow(() -> new APIException(AppError.ERROR_CATEGORY_NOT_FOUND));
+    }
+
     private CategoryResponse getCategoryResponse(Page<Category> categoryPage) {
         if (categoryPage.isEmpty()) {
             throw new APIException(AppError.ERROR_CATEGORY_NOT_FOUND);
