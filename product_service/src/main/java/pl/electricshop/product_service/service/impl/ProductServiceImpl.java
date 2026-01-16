@@ -3,6 +3,10 @@ package pl.electricshop.product_service.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,15 +21,11 @@ import pl.electricshop.product_service.model.Product;
 import pl.electricshop.product_service.repository.CategoryRepository;
 import pl.electricshop.product_service.repository.ProductRepository;
 import pl.electricshop.product_service.service.ProductService;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @Slf4j
@@ -58,17 +58,34 @@ public class ProductServiceImpl implements ProductService {
         return mapToProductResponse(pageProducts);
     }
 
-    @Override
-    public ProductResponse searchByCategory(UUID categoryId, Integer pageNumber,
-                                            Integer pageSize, String sortBy, String sortOrder) {
-        return null;
-    }
-
-    @Override
-    public ProductResponse searchProductByKeyWord(String keyword, Integer pageNumber,
-                                                  Integer pageSize, String sortBy, String sortOrder) {
-        return null;
-    }
+//    @Override
+//    public ProductResponse searchByCategory(String categoryNumber, Integer pageNumber,
+//                                            Integer pageSize, String sortBy, String sortOrder) {
+//
+//        Category category = fetchCategoryById(categoryNumber);
+//
+//        Pageable pageDetails = getPageDetails(pageNumber, pageSize, sortBy, sortOrder);
+//        Page<Product> productPage = productRepository
+//                .findByCategoryOrderByPriceAsc(category, pageDetails);
+//
+//
+//        List<Product> products = productPage.getContent();
+//        if (products.isEmpty()) {
+//            throw new APIException(category.getCategoryName()+ " " + AppError.ERROR_CATEGORY_NO_PRODUCTS);
+//        } else {
+//            return mapToProductResponse(productPage);
+//        }
+//    }
+//
+//    @Override
+//    public ProductResponse searchProductByKeyWord(String keyword, Integer pageNumber,
+//                                                  Integer pageSize, String sortBy, String sortOrder) {
+//        Pageable pageDetails = getPageDetails(pageNumber, pageSize, sortBy, sortOrder);
+//        Page<Product> productPage = productRepository
+//                .findByProductNameLikeIgnoreCase('%' + keyword + '%', pageDetails);
+//
+//        return mapToProductResponse(productPage);
+//    }
 
     @Override
     public ProductDTO addProduct(String categoryNumber, ProductDTO productDTO) {
@@ -86,7 +103,7 @@ public class ProductServiceImpl implements ProductService {
             product.setImage(productDTO.getImage());
         }
 
-        product.getCategories().add((Category) category);
+        product.getCategories().add(category);
 
         product.setSpecialPrice(calculateSpecialPrice(product.getPrice(), product.getDiscount()));
 
@@ -97,18 +114,44 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public ProductDTO updateProduct(Long productId, ProductDTO productDTO) {
-        return null;
+    public ProductDTO updateProduct(String productNumber, ProductDTO productDTO) {
+        Product product = fetchProductById(productNumber);
+        product.setSpecialPrice(calculateSpecialPrice(product.getPrice(), product.getDiscount()));
+
+
+        productMapper.updateEntityFromDTO(productDTO, product);
+        Product updatedProduct = productRepository.save(product);
+
+
+        return productMapper.toDTO(updatedProduct);
     }
 
-    @Override
-    public ProductDTO updateProductImage(Long productId, MultipartFile image) {
-        return null;
-    }
 
     @Override
-    public ProductDTO deleteProductById(Long productId) {
-        return null;
+    public ProductDTO updateProductImage(String productNumber, MultipartFile image) {
+        Product product = fetchProductById(productNumber);
+        validateImageFile(image);
+
+        String fileName;
+        try {
+            fileName = fileService.uploadImage(imagePath, image);
+        }catch (IOException e) {
+            throw new APIException("Image upload failed: " + e.getMessage());
+        }
+
+        product.setImage(fileName);
+        Product updatedProduct = productRepository.save(product);
+        ProductDTO updatedProductDTO = productMapper.toDTO(updatedProduct);
+        updatedProductDTO.setImage(constructImageUrl(updatedProduct.getImage()));
+        return updatedProductDTO;
+    }
+
+
+
+    @Override
+    public void deleteProductById(String productNumber) {
+        Product product = fetchProductById(productNumber);
+        productRepository.delete(product);
     }
 
     private  Pageable getPageDetails(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
@@ -193,5 +236,15 @@ public class ProductServiceImpl implements ProductService {
 
         // Math.max(0, finalPrice)
         return finalPrice.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : finalPrice;
+    }
+    private Product fetchProductById(String productNumber) {
+        return productRepository.findByProductNumber(productNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "productNumber", productNumber));
+    }
+
+    private void validateImageFile(MultipartFile image) {
+        if (image.isEmpty() || !image.getContentType().startsWith("image/")) {
+            throw new APIException("Invalid image file");
+        }
     }
 }

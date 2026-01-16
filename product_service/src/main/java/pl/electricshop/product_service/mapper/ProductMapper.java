@@ -19,4 +19,10 @@ public interface ProductMapper {
     @Mapping(target = "categories", ignore = true)
     @Mapping(target = "productNumber", ignore = true)
     Product toEntity(ProductDTO productDTO);
+
+    @Mapping(target = "uuid", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "productNumber", ignore = true)
+    void updateEntityFromDTO(ProductDTO productDTO, Product product);
 }
