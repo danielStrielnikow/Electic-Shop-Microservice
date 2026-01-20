@@ -18,6 +18,7 @@ import pl.electricshop.user_service.repository.UserRepository;
  * Service responsible for JWT token lifecycle management (SRP)
  * - Generating refresh token cookies
  * - Refreshing access tokens
+ * - Token blacklist validation
  */
 @Service
 @RequiredArgsConstructor
@@ -26,6 +27,7 @@ public class JwtTokenService {
     private final JwtService jwtService;
     private final JwtConfig jwtConfig;
     private final UserRepository userRepository;
+    private final TokenService tokenService;
 
     /**
      * Generates HTTP-only secure cookie with refresh token
@@ -46,6 +48,12 @@ public class JwtTokenService {
      * Refreshes access token using refresh token
      */
     public UserJwtResponse refreshAccessToken(String refreshTokenString) throws ExpiredJwtException {
+        // Check if token is blacklisted (user logged out)
+        if (tokenService.isRefreshTokenBlacklisted(refreshTokenString)) {
+            log.debug("Refresh token is blacklisted");
+            throw new RefreshTokenExpiredException("Token has been invalidated. Please login again.");
+        }
+
         Jwt refreshToken = jwtService.parse(refreshTokenString);
 
         if (refreshToken == null || refreshToken.isExpired()) {
@@ -55,7 +63,18 @@ public class JwtTokenService {
         User user = userRepository.findById(refreshToken.getUserId())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
+        // Blacklist old token (rotation) and generate new one
+        tokenService.invalidateRefreshToken(refreshTokenString);
+
         String newAccessToken = jwtService.generateAccessToken(user);
         return new UserJwtResponse(newAccessToken);
+    }
+
+    /**
+     * Invalidates refresh token (for logout)
+     */
+    public void invalidateRefreshToken(String refreshTokenString) {
+        tokenService.invalidateRefreshToken(refreshTokenString);
+        log.debug("Refresh token invalidated");
     }
 }

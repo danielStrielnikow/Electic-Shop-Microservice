@@ -159,6 +159,17 @@ public class AuthGrpcService extends AuthServiceGrpc.AuthServiceImplBase {
         log.debug("gRPC RefreshToken request");
 
         try {
+            // Check if token is blacklisted (user logged out)
+            if (tokenService.isRefreshTokenBlacklisted(request.getRefreshToken())) {
+                log.debug("gRPC RefreshToken failed - token is blacklisted");
+                responseObserver.onNext(AuthResponse.newBuilder()
+                        .setSuccess(false)
+                        .setMessage("Token has been invalidated. Please login again.")
+                        .build());
+                responseObserver.onCompleted();
+                return;
+            }
+
             Jwt refreshToken = jwtService.parse(request.getRefreshToken());
 
             if (refreshToken == null || refreshToken.isExpired()) {
@@ -167,6 +178,9 @@ public class AuthGrpcService extends AuthServiceGrpc.AuthServiceImplBase {
 
             User user = userRepository.findById(refreshToken.getUserId())
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+            // Blacklist old refresh token (rotation)
+            tokenService.invalidateRefreshToken(request.getRefreshToken());
 
             // Generate new tokens
             String newAccessToken = jwtService.generateAccessToken(user);
