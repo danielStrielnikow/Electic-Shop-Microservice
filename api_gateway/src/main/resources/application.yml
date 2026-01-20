@@ -1,0 +1,118 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+
+      routes:
+        # ============================================
+        # CART SERVICE ROUTES
+        # Must be BEFORE product-service (more specific path)
+        # ============================================
+        - id: cart-service
+          uri: lb://CART-SERVICE
+          predicates:
+            - Path=/api/v1/cart/**
+
+        # ============================================
+        # ORDER SERVICE ROUTES
+        # ============================================
+        - id: order-service
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/orders/**
+
+        # ============================================
+        # PRODUCT SERVICE ROUTES
+        # Endpoints: /api/v1/products/**, /api/v1/categories/**, /api/v1/admin/**
+        # No StripPrefix - forwards full path
+        # ============================================
+        - id: product-service
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/admin/**
+        # ============================================
+        # USER SERVICE ROUTES
+        # Endpoints: /auth/**, /admin/**, /users/**, /addresses/**
+        # StripPrefix=1 removes /api prefix before forwarding
+        # ============================================
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/auth/**, /api/admin/**, /api/users/**, /api/addresses/**
+          filters:
+            - StripPrefix=1
+
+        # ============================================
+        # NOTIFICATION SERVICE ROUTES
+        # ============================================
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - StripPrefix=1
+
+# Eureka Client Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+
+# JWT Configuration
+app:
+  jwt:
+    secret: ${JWT_SECRET:mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
+  gateway:
+    public-paths:
+      # Auth endpoints
+      - /api/auth/login
+      - /api/auth/register
+      - /api/auth/logout
+      - /api/auth/refresh
+      - /api/auth/forgot-password
+      - /api/auth/validate-password-token/**
+      - /api/auth/resend-verification-email
+      - /api/auth/verify-email/**
+      - /api/auth/reset-password
+      - /api/auth/validate-verification-email-token/**
+      - /api/auth/email-verification-status
+      # Product service public endpoints (GET only - handled by JWT filter)
+      - /api/v1/products/**
+      - /api/v1/categories/**
+      # Documentation
+      - /api/v3/api-docs/**
+      - /api/swagger-ui/**
+      - /api/swagger-ui.html
+      # Actuator
+      - /actuator/**
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+# Logging - production level
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    pl.electricshop.gateway: INFO

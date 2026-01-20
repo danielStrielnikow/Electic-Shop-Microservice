@@ -1,6 +1,6 @@
 spring:
   application:
-    name: user_service
+    name: user-service
 
   # PostgreSQL Configuration
   datasource:
@@ -18,12 +18,17 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        default_schema: users
 
   # Flyway Configuration
   flyway:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
+    table: users_schema_version
+    schemas: users
+    default-schema: users
+
 
   # Redis Configuration
   data:
@@ -45,10 +50,32 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
+    private-key: classpath:certs/private.pem
+    public-key: classpath:certs/public.pem
     expiration: ${JWT_EXPIRATION:3600000}
     refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
   security:
     hmac-secret: ${HMAC_SECRET:xR9pL2mN8vQ4tY7wE3kS6jH1bC5fG9zX0aM4nP8qW2uV}
 server:
-  port: 80
+  port: 8081
+
+# Eureka Client Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

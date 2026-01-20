@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: cart-service
+  config:
+    import: optional:configserver:http://localhost:8888
+  cloud:
+    config:
+      fail-fast: false
+
+# Fallback configuration (used when Config Server is unavailable)
+server:
+  port: 8084
+
+grpc:
+  client:
+    product-service:
+      address: static://localhost:9090
+      negotiation-type: plaintext

@@ -2,25 +2,24 @@ package pl.electricshop.user_service.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.*;
-import pl.electricshop.user_service.base.BaseEntity;
+import pl.electricshop.common.events.base.BaseEntity;
 import pl.electricshop.user_service.model.enums.Role;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
 @Builder
 @Getter
 @Setter
-@Entity
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "users")
 public class User extends BaseEntity {
 
     @Column(nullable = false, unique = true)
+    @Email
     private String email;
 
     @Column(nullable = false)

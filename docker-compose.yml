@@ -1,5 +1,9 @@
 services:
-  # Baza danych PostgreSQL
+  # ============================================
+  # INFRASTRUCTURE SERVICES
+  # ============================================
+
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: electric_shop_postgres
@@ -19,7 +23,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Cache Redis
+  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: electric_shop_redis
@@ -36,7 +40,7 @@ services:
       retries: 5
     command: redis-server --appendonly yes
 
-  # Zookeeper (wymagany przez Kafkę)
+  # Zookeeper (required by Kafka)
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
     container_name: electric_shop_zookeeper
@@ -69,7 +73,6 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      # Konfiguracja dla połączeń lokalnych (localhost) i wewnętrznych (kafka)
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
@@ -77,7 +80,6 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      # Automatyczne tworzenie topics
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
     depends_on:
       zookeeper:
@@ -88,7 +90,139 @@ services:
       timeout: 10s
       retries: 5
 
-# Wolumeny dla persystencji danych
+  # ============================================
+  # SERVICE DISCOVERY
+  # ============================================
+
+  # Eureka Server - Service Discovery
+  eureka-server:
+    build:
+      context: .
+      dockerfile: eureka_server/Dockerfile
+    container_name: electric_shop_eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - electric_network
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8761/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ============================================
+  # API GATEWAY
+  # ============================================
+
+  # API Gateway - Central Entry Point
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api_gateway/Dockerfile
+    container_name: electric_shop_gateway
+    ports:
+      - "8080:8080"
+    networks:
+      - electric_network
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET:-mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ============================================
+  # APPLICATION SERVICES
+  # ============================================
+
+  # User Service - Authentication & User Management
+  user-service:
+    build:
+      context: .
+      dockerfile: user_service/Dockerfile
+    container_name: electric_shop_user_service
+    ports:
+      - "8081:8081"
+    networks:
+      - electric_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=electric_shop_db
+      - POSTGRES_USER=electric_user
+      - POSTGRES_PASSWORD=electric_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET:-mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-3600000}
+      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-604800000}
+      - HMAC_SECRET=${HMAC_SECRET:-xR9pL2mN8vQ4tY7wE3kS6jH1bC5fG9zX0aM4nP8qW2uV}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Notification Service - Email Notifications
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification_service/Dockerfile
+    container_name: electric_shop_notification_service
+    ports:
+      - "8082:8082"
+    networks:
+      - electric_network
+    depends_on:
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_FROM=${MAIL_FROM:-noreply@electricshop.pl}
+      - PASSWORD_RESET_SUBJECT=${PASSWORD_RESET_SUBJECT:-Reset hasla}
+      - PASSWORD_RESET_EXPIRY_MINUTES=${PASSWORD_RESET_EXPIRY_MINUTES:-15}
+      - EMAIL_VERIFICATION_SUBJECT=${EMAIL_VERIFICATION_SUBJECT:-Weryfikacja email}
+      - EMAIL_VERIFICATION_EXPIRY_MINUTES=${EMAIL_VERIFICATION_EXPIRY_MINUTES:-60}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:3000}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+# Volumes for data persistence
 volumes:
   postgres_data:
     driver: local
@@ -99,7 +233,7 @@ volumes:
   zookeeper_data:
     driver: local
 
-# Sieć dla mikroserwisów
+# Network for microservices
 networks:
   electric_network:
     driver: bridge

@@ -37,3 +37,6 @@ out/
 .vscode/
 
 .env
+
+### PRIVET KEY ###
+/src/main/resources/certs/

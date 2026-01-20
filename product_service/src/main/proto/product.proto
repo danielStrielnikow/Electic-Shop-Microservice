@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option java_package = "pl.electricshop.grpc";
+option java_multiple_files = true;
+
+service ProductGrpcService {
+  // Metoda, którą Cart Service wywoła
+  rpc GetProductForCart (ProductCartRequest) returns (ProductCartResponse);
+}
+
+message ProductCartRequest {
+  string productNumber = 1;
+}
+
+message ProductCartResponse {
+  string productNumber = 1;
+  string productName = 2;
+  double price = 3;
+  string image = 4;
+  int32 discount = 5;
+  int32 specialPrice = 6;
+  int32 quantity = 7;
+}

@@ -1,23 +1,10 @@
-FROM gradle:8.5-jdk21 AS build
-
+FROM gradle:8.13-jdk21 AS build
 WORKDIR /app
+COPY . .
+RUN gradle :notification_service:bootJar --no-daemon
 
-COPY build.gradle settings.gradle ./
-COPY gradle ./gradle
-COPY gradlew ./
-
-RUN ./gradlew dependencies --no-daemon
-
-COPY src ./src
-
-RUN ./gradlew build -x test --no-daemon
-
-FROM eclipse-temurin:21-jre
-
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-
-COPY --from=build /app/build/libs/*.jar app.jar
-
-EXPOSE 81
-
+COPY --from=build /app/notification_service/build/libs/*.jar app.jar
+EXPOSE 8082
 ENTRYPOINT ["java", "-jar", "app.jar"]

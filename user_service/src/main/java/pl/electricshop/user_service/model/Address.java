@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import pl.electricshop.user_service.base.BaseEntity;
+import pl.electricshop.common.events.base.BaseEntity;
 import pl.electricshop.user_service.model.enums.Country;
 
 @Entity
