@@ -6,16 +6,16 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import pl.electricshop.product_service.base.BaseEntity;
+import pl.electricshop.common.events.base.BaseEntity;
 
 import java.util.HashSet;
 import java.util.Set;
 
+@Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
 @Table(name = "categories")
 public class Category extends BaseEntity {
 

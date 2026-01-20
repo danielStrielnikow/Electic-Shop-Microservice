@@ -50,7 +50,8 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
+    private-key: classpath:certs/private.pem
+    public-key: classpath:certs/public.pem
     expiration: ${JWT_EXPIRATION:3600000}
     refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
   security:

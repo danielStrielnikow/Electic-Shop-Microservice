@@ -1,4 +1,4 @@
-package pl.electricshop.user_service.base;
+package pl.electricshop.common.events.base;
 
 import jakarta.persistence.*;
 import lombok.Getter;

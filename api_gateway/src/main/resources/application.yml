@@ -13,6 +13,32 @@ spring:
 
       routes:
         # ============================================
+        # CART SERVICE ROUTES
+        # Must be BEFORE product-service (more specific path)
+        # ============================================
+        - id: cart-service
+          uri: lb://CART-SERVICE
+          predicates:
+            - Path=/api/v1/cart/**
+
+        # ============================================
+        # ORDER SERVICE ROUTES
+        # ============================================
+        - id: order-service
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/orders/**
+
+        # ============================================
+        # PRODUCT SERVICE ROUTES
+        # Endpoints: /api/v1/products/**, /api/v1/categories/**, /api/v1/admin/**
+        # No StripPrefix - forwards full path
+        # ============================================
+        - id: product-service
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/admin/**
+        # ============================================
         # USER SERVICE ROUTES
         # Endpoints: /auth/**, /admin/**, /users/**, /addresses/**
         # StripPrefix=1 removes /api prefix before forwarding
@@ -33,16 +59,6 @@ spring:
             - Path=/api/notifications/**
           filters:
             - StripPrefix=1
-
-        # ============================================
-        # PRODUCT SERVICE ROUTES
-        # Endpoints: /api/v1/products/**, /api/v1/categories/**, /api/v1/admin/**
-        # No StripPrefix - forwards full path
-        # ============================================
-        - id: product-service
-          uri: lb://PRODUCT-SERVICE
-          predicates:
-            - Path=/api/v1/**
 
 # Eureka Client Configuration
 eureka:

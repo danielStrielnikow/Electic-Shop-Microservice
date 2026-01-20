@@ -1,0 +1,15 @@
+server:
+  port: 8084
+
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+# gRPC Client
+grpc:
+  client:
+    product-service:
+      address: static://localhost:9090
+      negotiation-type: plaintext

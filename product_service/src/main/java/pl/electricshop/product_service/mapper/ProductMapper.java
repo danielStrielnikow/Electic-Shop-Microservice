@@ -2,6 +2,7 @@ package pl.electricshop.product_service.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import pl.electricshop.product_service.api.dto.ProductDTO;
 import pl.electricshop.product_service.model.Product;
 
@@ -24,5 +25,5 @@ public interface ProductMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "productNumber", ignore = true)
-    void updateEntityFromDTO(ProductDTO productDTO, Product product);
+    void updateEntityFromDTO(ProductDTO productDTO, @MappingTarget Product product);
 }

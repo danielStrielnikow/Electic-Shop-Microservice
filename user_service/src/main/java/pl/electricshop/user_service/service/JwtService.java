@@ -14,13 +14,12 @@ import java.util.Date;
 public class JwtService {
     private final JwtConfig jwtConfig;
 
-
-    // access token
+    // Access token
     public String generateAccessToken(User user) {
         return generateToken(user, jwtConfig.getExpiration());
     }
 
-    // refresh token in 7 days
+    // Refresh token
     public String generateRefreshToken(User user) {
         return generateToken(user, jwtConfig.getRefreshExpiration());
     }
@@ -30,18 +29,23 @@ public class JwtService {
                 .subject(String.valueOf(user.getUuid()))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + tokenExpirationTime))
-                .signWith(jwtConfig.getSecretKey())
+                // ZMIANA: Używamy klucza PRYWATNEGO i algorytmu RS256
+                .signWith(jwtConfig.getRsaPrivateKey(), Jwts.SIG.RS256)
                 .claim("email", user.getEmail())
                 .claim("role", user.getUserRole().name())
                 .compact();
     }
 
     public Jwt parse(String token) {
-        var claims = Jwts.parser().verifyWith(jwtConfig.getSecretKey())
+        // ZMIANA: Do weryfikacji używamy klucza PUBLICZNEGO
+        var claims = Jwts.parser()
+                .verifyWith(jwtConfig.getRsaPublicKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
 
-        return new Jwt(claims, jwtConfig.getSecretKey());
+        // Tutaj przekazujemy klucz publiczny do obiektu Jwt (jeśli Twoja klasa Jwt tego wymaga)
+        // Jeśli klasa Jwt służy tylko do trzymania claims, możesz pominąć drugi argument
+        return new Jwt(claims, jwtConfig.getRsaPublicKey());
     }
 }

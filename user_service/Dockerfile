@@ -1,7 +1,7 @@
 FROM gradle:8.13-jdk21 AS build
 WORKDIR /app
 COPY . .
-RUN gradle :user_service:bootJar --no-daemon
+RUN gradle clean :user_service:bootJar --no-daemon --no-build-cache
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
