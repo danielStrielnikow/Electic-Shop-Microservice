@@ -8,10 +8,19 @@ grpc:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/electric_shop_db
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5433}/${POSTGRES_DB:electric_shop_db}
     username: ${POSTGRES_USER:electric_user}
     password: ${POSTGRES_PASSWORD:electric_password}
     driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
   jpa:
     hibernate:
       ddl-auto: validate

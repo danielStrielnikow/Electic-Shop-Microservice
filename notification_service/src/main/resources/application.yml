@@ -1,13 +1,15 @@
 spring:
   application:
     name: notification-service
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
 
   # Mail Configuration
   mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -31,7 +33,7 @@ spring:
     stream:
       kafka:
         binder:
-          brokers: localhost:9092
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
       bindings:
         userRegistration-in-0:
           destination: user-registration
@@ -43,15 +45,15 @@ spring:
 # Application Configuration
 app:
   mail:
-    from: ${MAIL_FROM}
+    from: ${MAIL_FROM:noreply@electricshop.pl}
     password-reset:
-      subject: ${PASSWORD_RESET_SUBJECT}
-      expiry-minutes: ${PASSWORD_RESET_EXPIRY_MINUTES}
+      subject: ${PASSWORD_RESET_SUBJECT:Reset hasla}
+      expiry-minutes: ${PASSWORD_RESET_EXPIRY_MINUTES:15}
     email-verification:
-      subject: ${EMAIL_VERIFICATION_SUBJECT}
-      expiry-minutes: ${EMAIL_VERIFICATION_EXPIRY_MINUTES}
+      subject: ${EMAIL_VERIFICATION_SUBJECT:Weryfikacja email}
+      expiry-minutes: ${EMAIL_VERIFICATION_EXPIRY_MINUTES:60}
   url:
-    front: ${APP_BASE_URL}
+    front: ${APP_BASE_URL:http://localhost:3000}
 
 server:
   port: 8082
@@ -60,7 +62,7 @@ server:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
     fetch-registry: true
     register-with-eureka: true
   instance:

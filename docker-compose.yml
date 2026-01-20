@@ -91,6 +91,36 @@ services:
       retries: 5
 
   # ============================================
+  # CONFIG SERVER
+  # ============================================
+
+  # Config Server - Centralized Configuration
+  config-server:
+    build:
+      context: .
+      dockerfile: config_server/Dockerfile
+    container_name: electric_shop_config_server
+    ports:
+      - "8888:8888"
+    networks:
+      - electric_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=native,docker
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ============================================
   # SERVICE DISCOVERY
   # ============================================
 
@@ -104,6 +134,9 @@ services:
       - "8761:8761"
     networks:
       - electric_network
+    depends_on:
+      config-server:
+        condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     healthcheck:
@@ -128,12 +161,17 @@ services:
     networks:
       - electric_network
     depends_on:
+      config-server:
+        condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      user-service:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_SECRET=${JWT_SECRET:-mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
+      - GRPC_CLIENT_USER_SERVICE_ADDRESS=static://user-service:9091
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
       interval: 15s
@@ -153,16 +191,19 @@ services:
     container_name: electric_shop_user_service
     ports:
       - "8081:8081"
+      - "9091:9091"  # gRPC port
     networks:
       - electric_network
     depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       kafka:
-        condition: service_healthy
-      eureka-server:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker
@@ -197,12 +238,15 @@ services:
     networks:
       - electric_network
     depends_on:
-      kafka:
+      config-server:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - CONFIG_SERVER_URL=http://config-server:8888
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
@@ -217,6 +261,121 @@ services:
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost:3000}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Product Service - Product Management
+  product-service:
+    build:
+      context: .
+      dockerfile: product_service/Dockerfile
+    container_name: electric_shop_product_service
+    ports:
+      - "8083:8083"
+      - "9090:9090"  # gRPC port
+    networks:
+      - electric_network
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=electric_shop_db
+      - POSTGRES_USER=electric_user
+      - POSTGRES_PASSWORD=electric_password
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8083/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Cart Service - Shopping Cart Management
+  cart-service:
+    build:
+      context: .
+      dockerfile: cart_service/Dockerfile
+    container_name: electric_shop_cart_service
+    ports:
+      - "8084:8084"
+    networks:
+      - electric_network
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - CONFIG_SERVER_URL=http://config-server:8888
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=electric_shop_db
+      - POSTGRES_USER=electric_user
+      - POSTGRES_PASSWORD=electric_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - GRPC_CLIENT_PRODUCT_SERVICE_ADDRESS=static://product-service:9090
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8084/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Order Service - Order Management
+  order-service:
+    build:
+      context: .
+      dockerfile: order_service/Dockerfile
+    container_name: electric_shop_order_service
+    ports:
+      - "8085:8085"
+    networks:
+      - electric_network
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=electric_shop_db
+      - POSTGRES_USER=electric_user
+      - POSTGRES_PASSWORD=electric_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8085/actuator/health"]
       interval: 15s
       timeout: 10s
       retries: 5

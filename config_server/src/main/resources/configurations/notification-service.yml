@@ -1,5 +1,5 @@
 server:
-  port: 8086
+  port: 8082
 
 spring:
   mail:
@@ -17,4 +17,4 @@ spring:
     stream:
       kafka:
         binder:
-          brokers: ${KAFKA_BROKERS:localhost:9092}
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}

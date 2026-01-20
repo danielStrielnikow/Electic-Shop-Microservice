@@ -16,7 +16,7 @@ app:
 grpc:
   client:
     user-service:
-      address: static://localhost:9091
+      address: ${GRPC_CLIENT_USER_SERVICE_ADDRESS:static://localhost:9091}
       negotiation-type: plaintext
 
 spring:
