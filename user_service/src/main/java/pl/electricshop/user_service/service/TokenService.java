@@ -1,7 +1,9 @@
 package pl.electricshop.user_service.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import pl.electricshop.user_service.validator.TokenValidationResult;
 
@@ -10,19 +12,45 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class TokenService {
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final String SEPARATOR = "|";
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final String BLACKLIST_PREFIX = "token:blacklist:";
+
+    private final StringRedisTemplate redisTemplate;
 
     @Value("${app.security.hmac-secret:default-secret-change-in-production}")
     private String hmacSecret;
+
+    @Value("${app.jwt.refresh-expiration:604800000}")
+    private long refreshTokenExpiration;
+
+    /**
+     * Invalidates a refresh token by adding it to Redis blacklist
+     */
+    public void invalidateRefreshToken(String refreshToken) {
+        String key = BLACKLIST_PREFIX + refreshToken.hashCode();
+        // Store in Redis with TTL equal to refresh token expiration
+        redisTemplate.opsForValue().set(key, "invalidated", Duration.ofMillis(refreshTokenExpiration));
+        log.debug("Refresh token added to blacklist");
+    }
+
+    /**
+     * Checks if a refresh token is blacklisted
+     */
+    public boolean isRefreshTokenBlacklisted(String refreshToken) {
+        String key = BLACKLIST_PREFIX + refreshToken.hashCode();
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
 
     /**
      * Generates a password reset token for the given email

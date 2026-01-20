@@ -1,6 +1,11 @@
 server:
   port: 8081
 
+# gRPC Server Configuration
+grpc:
+  server:
+    port: 9091
+
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5433/electric_shop_db

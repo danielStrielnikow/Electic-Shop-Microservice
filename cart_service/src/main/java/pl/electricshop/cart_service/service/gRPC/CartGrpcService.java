@@ -5,8 +5,7 @@ import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.stereotype.Service;
 import pl.electricshop.grpc.ProductCartRequest;
 import pl.electricshop.grpc.ProductCartResponse;
-import pl.electricshop.grpc.ProductGrpcServiceGrpc.ProductGrpcServiceBlockingStub;
-
+import pl.electricshop.grpc.ProductGrpcServiceGrpc;
 /**
  * Serwis do komunikacji z Product Service przez gRPC.
  * Używa grpc-spring (net.devh) z adnotacją @GrpcClient.
@@ -16,7 +15,7 @@ import pl.electricshop.grpc.ProductGrpcServiceGrpc.ProductGrpcServiceBlockingStu
 public class CartGrpcService {
 
     @GrpcClient("product-service")
-    private ProductGrpcServiceBlockingStub productStub;
+    private ProductGrpcServiceGrpc.ProductGrpcServiceBlockingStub productStub;
 
     /**
      * Pobiera dane produktu z Product Service przez gRPC.
