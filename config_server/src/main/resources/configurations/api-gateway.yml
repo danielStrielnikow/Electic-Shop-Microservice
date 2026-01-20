@@ -1,6 +1,24 @@
 server:
   port: 8080
 
+# JWT Configuration - RS256 with public key only (for validation)
+app:
+  jwt:
+    public-key: classpath:certs/public.pem
+  gateway:
+    public-paths:
+      - /api/v1/auth/**
+      - /api/v1/products/**
+      - /api/v1/categories/**
+      - /actuator/**
+
+# gRPC Client Configuration
+grpc:
+  client:
+    user-service:
+      address: static://localhost:9091
+      negotiation-type: plaintext
+
 spring:
   cloud:
     gateway:

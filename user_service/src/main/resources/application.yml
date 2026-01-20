@@ -59,6 +59,11 @@ app:
 server:
   port: 8081
 
+# gRPC Server Configuration
+grpc:
+  server:
+    port: 9091
+
 # Eureka Client Configuration
 eureka:
   client:

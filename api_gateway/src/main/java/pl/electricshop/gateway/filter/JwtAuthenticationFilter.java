@@ -65,9 +65,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String token = authHeader.substring(7); // Remove "Bearer " prefix
 
         try {
-            // Parse and validate JWT
+            // Parse and validate JWT with RS256 public key
             Claims claims = Jwts.parser()
-                    .verifyWith(config.getJwt().getSecretKey())
+                    .verifyWith(config.getJwt().getRsaPublicKey())
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();

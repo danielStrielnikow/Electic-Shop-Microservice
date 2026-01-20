@@ -71,13 +71,15 @@ eureka:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${random.value}
 
-# JWT Configuration
+# JWT Configuration - RS256 with public key
 app:
   jwt:
-    secret: ${JWT_SECRET:mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
+    public-key: classpath:certs/public.pem
   gateway:
     public-paths:
-      # Auth endpoints
+      # Auth endpoints (new gRPC-based)
+      - /api/v1/auth/**
+      # Legacy auth endpoints
       - /api/auth/login
       - /api/auth/register
       - /api/auth/logout
@@ -89,7 +91,7 @@ app:
       - /api/auth/reset-password
       - /api/auth/validate-verification-email-token/**
       - /api/auth/email-verification-status
-      # Product service public endpoints (GET only - handled by JWT filter)
+      # Product service public endpoints
       - /api/v1/products/**
       - /api/v1/categories/**
       # Documentation
@@ -98,6 +100,13 @@ app:
       - /api/swagger-ui.html
       # Actuator
       - /actuator/**
+
+# gRPC Client Configuration (fallback)
+grpc:
+  client:
+    user-service:
+      address: static://localhost:9091
+      negotiation-type: plaintext
 
 # Actuator Configuration
 management:

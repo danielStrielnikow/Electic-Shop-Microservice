@@ -1,4 +1,5 @@
 syntax = "proto3";
+package pl.electricshop.grpc;
 
 option java_package = "pl.electricshop.grpc";
 option java_multiple_files = true;
