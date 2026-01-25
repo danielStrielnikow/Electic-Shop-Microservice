@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pl.electricshop.cart_service.dto.AddToCartRequest;
 import pl.electricshop.cart_service.dto.CartResponse;
+import pl.electricshop.cart_service.dto.CheckoutRequest;
 import pl.electricshop.cart_service.dto.UpdateQuantityRequest;
 import pl.electricshop.cart_service.mapper.CartMapper;
 import pl.electricshop.cart_service.model.Cart;
@@ -99,4 +100,19 @@ public class CartController {
         cartService.clearCart(userId);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/checkout")
+    public ResponseEntity<Void> checkout(
+            @RequestHeader("X-User-ID") UUID userId,
+            @Valid @RequestBody CheckoutRequest request) {
+
+        log.info("POST /api/v1/cart/checkout for user: {}", userId);
+
+        // Wywołanie logiki biznesowej (rzucenie eventu na Kafkę)
+        cartService.checkout(userId, request.getAddressId(), request.getEmail());
+
+        // Zwracamy 202 ACCEPTED, bo proces dzieje się w tle (asynchronicznie)
+        return ResponseEntity.accepted().build();
+    }
+
 }

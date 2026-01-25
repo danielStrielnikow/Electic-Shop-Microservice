@@ -1,16 +1,16 @@
 package pl.electricshop.cart_service.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 /**
  * Element koszyka - przechowuje snapshot danych produktu w momencie dodania.
  * Klasa przechowywana w Redis jako część Cart.
  */
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class CartItem implements Serializable {

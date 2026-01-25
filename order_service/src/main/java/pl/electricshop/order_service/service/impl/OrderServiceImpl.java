@@ -1,5 +1,6 @@
 package pl.electricshop.order_service.service.impl;
 
+import pl.electricshop.order_service.client.UserServiceClient;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,10 +15,11 @@ import pl.electricshop.order_service.api.AddressDTO;
 import pl.electricshop.order_service.mapper.OrderMapper;
 import pl.electricshop.order_service.model.Order;
 import pl.electricshop.order_service.model.enums.OrderStatus;
-import pl.electricshop.order_service.repository.OrderItemRepository;
 import pl.electricshop.order_service.repository.OrderRepository;
+import pl.electricshop.order_service.service.InventoryClient;
 import pl.electricshop.order_service.service.OrderService;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -28,10 +30,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final UserServiceClient userClient;
     private final OrderMapper orderMapper;
+    private final InventoryClient inventoryClient;
 
     /**
      * Główna metoda "Place Order".
@@ -90,11 +92,12 @@ public class OrderServiceImpl implements OrderService {
         // 1. Mapowanie pozycji zamówienia na Payload (dla maila)
         List<OrderItemPayload> itemPayloads = order.getOrderItems().stream()
                 .map(item -> new OrderItemPayload(
-                        item.getProductId().toString(), // lub productNumber jeśli masz
+                        item.getProductNumber(),
                         item.getProductName(),
                         item.getQuantity(),
                         item.getOrderedProductPrice(),
-                        item.getOrderedProductPrice() * item.getQuantity()
+                        item.getOrderedProductPrice()
+                                .multiply(BigDecimal.valueOf(item.getQuantity()))
                 ))
                 .collect(Collectors.toList());
 

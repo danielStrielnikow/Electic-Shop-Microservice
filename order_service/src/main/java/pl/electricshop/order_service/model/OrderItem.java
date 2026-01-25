@@ -7,8 +7,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pl.electricshop.common.events.base.BaseEntity;
 
+import java.math.BigDecimal;
+
 @Entity
-@Table
+@Table(name = "order_item")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,10 +21,10 @@ public class OrderItem extends BaseEntity {
     @JoinColumn(name = "order_id")
     private Order order;
 
-    private Long productId;      // ID produktu (do komunikacji z Inventory/Product service)
+    private String productNumber;      // ID produktu (do komunikacji z Inventory/Product service)
     private String productName;
 
     private Integer quantity;
-    private double discount;
-    private double orderedProductPrice;
+    private BigDecimal discount;
+    private BigDecimal orderedProductPrice;
 }

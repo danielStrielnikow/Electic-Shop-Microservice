@@ -44,6 +44,7 @@ public class SecurityConfig {
                                 "/auth/validate-verification-email-token/**",
                                 "/auth/email-verification-status",
                                 "/actuator/**",
+                                "/api/addresses/internal/**",
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Admin endpoints (ADMIN role required)
                         .requestMatchers("/admin/**").hasRole("ADMIN")

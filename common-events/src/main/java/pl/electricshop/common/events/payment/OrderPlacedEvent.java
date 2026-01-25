@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -18,7 +19,7 @@ public class OrderPlacedEvent {
     private UUID userId;
     private String email;
 
-    private Double totalPrice;
+    private BigDecimal totalPrice;
 
     private List<OrderItemPayload> items;
 

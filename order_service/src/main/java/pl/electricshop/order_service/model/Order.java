@@ -6,6 +6,7 @@ import lombok.*;
 import pl.electricshop.common.events.base.BaseEntity;
 import pl.electricshop.order_service.model.enums.OrderStatus;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +33,7 @@ public class Order extends BaseEntity {
 
     private LocalDateTime orderDate;
 
-    private Double totalAmount;
+    private BigDecimal totalAmount;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;

@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Embeddable
 @Data
 @NoArgsConstructor
@@ -16,5 +18,5 @@ public class AddressSnapshot {
     private String state;
     private String zipCode;
     private String country;
-    private Long originalAddressId;
+    private UUID originalAddressId;
 }

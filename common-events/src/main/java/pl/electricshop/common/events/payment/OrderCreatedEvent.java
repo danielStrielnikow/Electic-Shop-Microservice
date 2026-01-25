@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
@@ -14,5 +15,5 @@ import java.util.UUID;
 public class OrderCreatedEvent {
     private UUID orderId;
     private String email;
-    private Double amountToPay;
+    private BigDecimal amountToPay;
 }

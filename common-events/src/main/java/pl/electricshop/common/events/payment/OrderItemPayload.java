@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -13,6 +15,6 @@ public class OrderItemPayload {
     private String productNumber;
     private String productName;
     private Integer quantity;
-    private Double unitPrice;
-    private Double totalLinePrice; // quantity * unitPrice
+    private BigDecimal unitPrice;
+    private BigDecimal totalLinePrice; // quantity * unitPrice
 }

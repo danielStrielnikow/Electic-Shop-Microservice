@@ -6,6 +6,18 @@ spring:
   cloud:
     config:
       fail-fast: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+          # Klucz wiadomości to String (np. userId) - to jest OK
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+          # ZMIANA: Wartość to Obiekt, więc musimy użyć JsonSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+      properties:
+            # Dodajemy nagłówek z typem, żeby Consumer wiedział co odczytać
+        spring.json.add.type.headers: true
 
 # Fallback configuration (used when Config Server is unavailable)
 server:
