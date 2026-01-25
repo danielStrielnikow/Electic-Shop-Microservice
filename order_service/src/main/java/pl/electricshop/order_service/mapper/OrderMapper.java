@@ -1,6 +1,10 @@
 package pl.electricshop.order_service.mapper;
 
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.AfterMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.springframework.stereotype.Component;
 import pl.electricshop.common.events.cart.CartCheckoutEvent;
 import pl.electricshop.common.events.cart.CartItemPayload;
@@ -14,58 +18,54 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Component
-@RequiredArgsConstructor
-public class OrderMapper {
+@Mapper(componentModel = "spring", imports = {LocalDateTime.class})
+public interface OrderMapper {
 
     /**
-     * Główna metoda wrappera.
-     * Bierze Event (z Kafki) + Adres (z Feign) -> Zwraca gotową Encję.
+     * Główna metoda mapująca.
+     * Bierze DWA źródła (Event i AddressDTO) i skleja w jeden Order.
      */
-    public Order createOrderEntity(CartCheckoutEvent event, AddressDTO addressDTO) {
-        Order order = new Order();
+    @Mapping(target = "orderId", ignore = true) // Generowane przez bazę
+    @Mapping(target = "email", source = "event.email")
+    @Mapping(target = "totalAmount", source = "event.totalPrice")
 
-        // 1. Podstawowe dane
-        order.setEmail(event.getEmail());
-        order.setOrderDate(LocalDateTime.now());
-        order.setTotalAmount(event.getTotalPrice());
-        order.setOrderStatus(OrderStatus.PENDING);
+    // Mapowanie listy itemów (automatycznie użyje metody mapToOrderItem poniżej)
+    @Mapping(target = "orderItems", source = "event.items")
 
-        // 2. Snapshot Adresu (Delegujemy do metody prywatnej, żeby było czytelnie)
-        order.setAddressSnapshot(mapToAddressSnapshot(addressDTO));
+    // Mapowanie adresu (automatycznie użyje metody mapToAddressSnapshot poniżej)
+    @Mapping(target = "shippingAddress", source = "addressDTO")
 
-        // 3. Pozycje zamówienia (Items)
-        List<OrderItem> orderItems = mapToOrderItems(event.getItems(), order);
-        order.setOrderItems(orderItems);
+    // Stałe wartości i wyrażenia Java
+    @Mapping(target = "orderStatus", constant = "PENDING")
+    @Mapping(target = "orderDate", expression = "java(LocalDateTime.now())")
+    Order createOrderEntity(CartCheckoutEvent event, AddressDTO addressDTO);
 
-        return order;
-    }
+    /**
+     * Helper 1: Mapowanie Adresu (DTO -> Embedded Snapshot)
+     * MapStruct sam domyśli się, że city -> city, street -> street.
+     * Musimy tylko obsłużyć ID.
+     */
+    @Mapping(target = "originalAddressId", source = "addressId")
+    AddressSnapshot mapToAddressSnapshot(AddressDTO dto);
 
-    // Metoda pomocnicza - tworzy snapshot adresu
-    private AddressSnapshot mapToAddressSnapshot(AddressDTO dto) {
-        AddressSnapshot snapshot = new AddressSnapshot();
-        snapshot.setStreet(dto.getStreet());
-        snapshot.setCity(dto.getCity());
-        snapshot.setZipCode(dto.getZipCode());
-        snapshot.setCountry(dto.getCountry());
-        snapshot.setBuildingName(dto.getBuildingName());
-        snapshot.setOriginalAddressId(dto.getAddressId());
-        return snapshot;
-    }
+    /**
+     * Helper 2: Mapowanie pojedynczego przedmiotu (DTO -> Entity)
+     * CartItemPayload -> OrderItem
+     */
+    @Mapping(target = "orderItemId", ignore = true)
+    @Mapping(target = "order", ignore = true) // Ustawimy to w @AfterMapping
+    @Mapping(target = "orderedProductPrice", source = "price") // Różne nazwy pól
+    OrderItem mapToOrderItem(CartItemPayload payload);
 
-    // Metoda pomocnicza - mapuje listę przedmiotów
-    private List<OrderItem> mapToOrderItems(List<CartItemPayload> itemsPayload, Order order) {
-        return itemsPayload.stream()
-                .map(payload -> {
-                    OrderItem item = new OrderItem();
-                    item.setProductId(payload.getProductId());
-                    item.setProductName(payload.getProductName()); // Snapshot nazwy
-                    item.setOrderedProductPrice(payload.getPrice()); // Snapshot ceny
-                    item.setQuantity(payload.getQuantity());
-                    item.setDiscount(payload.getDiscount());
-                    item.setOrder(order); // Ustawiamy relację dwukierunkową
-                    return item;
-                })
-                .collect(Collectors.toList());
+    /**
+     * MAGIA: Dwukierunkowe relacje (@AfterMapping)
+     * MapStruct stworzy listę OrderItems, ale każdy item będzie miał pole 'order' = null.
+     * Ta metoda uruchamia się na końcu i naprawia relację rodzic-dziecko.
+     */
+    @AfterMapping
+    default void linkOrderItems(@MappingTarget Order order) {
+        if (order.getOrderItems() != null) {
+            order.getOrderItems().forEach(item -> item.setOrder(order));
+        }
     }
 }

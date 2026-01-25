@@ -8,6 +8,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import pl.electricshop.common.events.cart.CartCheckoutEvent;
 import pl.electricshop.common.events.payment.OrderCreatedEvent;
+import pl.electricshop.common.events.payment.OrderItemPayload;
+import pl.electricshop.common.events.payment.OrderPlacedEvent;
 import pl.electricshop.order_service.api.AddressDTO;
 import pl.electricshop.order_service.mapper.OrderMapper;
 import pl.electricshop.order_service.model.Order;
@@ -17,7 +19,9 @@ import pl.electricshop.order_service.repository.OrderRepository;
 import pl.electricshop.order_service.service.OrderService;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,13 +43,7 @@ public class OrderServiceImpl implements OrderService {
     public void proccessOrder(CartCheckoutEvent event) {
         log.info("Rozpoczynam tworzenie zamówienia dla: {}", event.getEmail());
 
-        AddressDTO addressDTO;
-        try {
-            addressDTO = userClient.getAddressById(event.getAddressId());
-        } catch (Exception e) {
-            log.error("Błąd podczas pobierania adresu użytkownika o ID: {}", event.getAddressId(), e);
-            throw new RuntimeException("Nie można pobrać adresu użytkownika.");
-        }
+        AddressDTO addressDTO = fetchAddressOrThrow(event.getAddressId());
 
         boolean isReserved = inventoryClient.reserveProducts(event.getItems());
         if (!isReserved) {
@@ -65,7 +63,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private AddressDTO fetchAddressOrThrow(UUID addressId) {
-        try{
+        try {
             return userClient.getAddressById(addressId);
         } catch (Exception e) {
             log.error("Błąd podczas pobierania adresu IDL {}", addressId, e);
@@ -82,5 +80,37 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("Wysyłam zdarzenie OrderCreatedEvent do usługi płatności dla zamówienia: {}", order.getUuid());
         kafkaTemplate.send("order-created-topic", paymentEvent);
+    }
+
+    // W OrderService (po otrzymaniu potwierdzenia płatności)
+
+    public void finalizeOrder(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElseThrow();
+
+        // 1. Mapowanie pozycji zamówienia na Payload (dla maila)
+        List<OrderItemPayload> itemPayloads = order.getOrderItems().stream()
+                .map(item -> new OrderItemPayload(
+                        item.getProductId().toString(), // lub productNumber jeśli masz
+                        item.getProductName(),
+                        item.getQuantity(),
+                        item.getOrderedProductPrice(),
+                        item.getOrderedProductPrice() * item.getQuantity()
+                ))
+                .collect(Collectors.toList());
+
+        // 2. Tworzenie Eventu
+        OrderPlacedEvent event = new OrderPlacedEvent(
+                order.getUuid(),
+                order.getUserId(),
+                order.getEmail(),
+                order.getTotalAmount(),
+                itemPayloads,
+                order.getAddressSnapshot().getCity(),
+                order.getAddressSnapshot().getStreet(),
+                LocalDateTime.now());
+        order.setOrderStatus(OrderStatus.DELIVERED);
+        orderRepository.save(order);
+        // 3. Wysłanie
+        kafkaTemplate.send("order-placed-topic", event);
     }
 }

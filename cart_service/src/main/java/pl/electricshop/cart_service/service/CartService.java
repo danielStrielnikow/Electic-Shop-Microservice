@@ -2,11 +2,15 @@ package pl.electricshop.cart_service.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pl.electricshop.cart_service.model.Cart;
 import pl.electricshop.cart_service.model.CartItem;
 import pl.electricshop.cart_service.repository.CartRepository;
 import pl.electricshop.cart_service.service.gRPC.CartGrpcService;
+import pl.electricshop.common.events.cart.CartCheckoutEvent;
+import pl.electricshop.common.events.payment.OrderPlacedEvent;
 import pl.electricshop.grpc.ProductCartResponse;
 
 import java.util.ArrayList;
@@ -119,5 +123,17 @@ public class CartService {
     public void clearCart(UUID userId) {
         log.info("Clearing cart for user {}", userId);
         cartRepository.deleteById(userId.toString());
+    }
+
+    @KafkaListener(topics = "order-placed-topic", groupId = "cart-service-group")
+    @Transactional
+    public void cleanUpCart(OrderPlacedEvent event) {
+        log.info("Zamówienie nr {} udane. Usuwam koszyk usera {}", event.getEmail(), event.getEmail());
+
+        if (event.getUserId() != null) {
+            clearCart(event.getUserId());
+        } else {
+            log.warn("Nie można usunąć koszyka - brak userId w evencie OrderPlacedEvent");
+        }
     }
 }

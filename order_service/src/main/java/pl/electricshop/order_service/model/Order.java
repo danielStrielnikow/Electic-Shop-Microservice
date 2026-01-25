@@ -9,6 +9,7 @@ import pl.electricshop.order_service.model.enums.OrderStatus;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Table(name = "orders")
 @Entity
@@ -17,6 +18,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Order extends BaseEntity {
+
+    private UUID userId;
 
     private String orderNumber;
 

@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -13,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 public class CartCheckoutEvent {
     private String email;
-    private Long addressId;     // Tylko ID!
+    private UUID addressId;     // Tylko ID!
     private Double totalPrice;
     private List<CartItemPayload> items;
 }
