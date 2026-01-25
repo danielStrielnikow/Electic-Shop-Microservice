@@ -7,5 +7,5 @@ import pl.electricshop.order_service.model.Order;
 import java.util.UUID;
 
 @Repository
-public interface OrderService extends JpaRepository<Order, UUID> {
+public interface OrderRepository extends JpaRepository<Order, UUID> {
 }
