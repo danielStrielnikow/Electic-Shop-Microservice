@@ -1,6 +1,5 @@
 package pl.electricshop.order_service.service.impl;
 
-import pl.electricshop.order_service.client.UserServiceClient;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +11,7 @@ import pl.electricshop.common.events.payment.OrderCreatedEvent;
 import pl.electricshop.common.events.payment.OrderItemPayload;
 import pl.electricshop.common.events.payment.OrderPlacedEvent;
 import pl.electricshop.order_service.api.AddressDTO;
+import pl.electricshop.order_service.client.UserServiceClient;
 import pl.electricshop.order_service.mapper.OrderMapper;
 import pl.electricshop.order_service.model.Order;
 import pl.electricshop.order_service.model.enums.OrderStatus;
@@ -77,7 +77,9 @@ public class OrderServiceImpl implements OrderService {
         OrderCreatedEvent paymentEvent = new OrderCreatedEvent(
                 order.getUuid(),
                 order.getEmail(),
-                order.getTotalAmount()
+                order.getTotalAmount(),
+                "BLIK",
+               "PLN"
         );
 
         log.info("Wysyłam zdarzenie OrderCreatedEvent do usługi płatności dla zamówienia: {}", order.getUuid());
@@ -115,5 +117,17 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save(order);
         // 3. Wysłanie
         kafkaTemplate.send("order-placed-topic", event);
+    }
+
+    @KafkaListener(topics = "payment-succeeded-topic", groupId = "order-group")
+    public void handlePaymentSucceeded(String message) {
+        log.info("Otrzymano potwierdzenie płatności: {}", message);
+        // Tutaj można wywołać finalizeOrder z odpowiednim orderId
+    }
+
+    @KafkaListener(topics = "payment-failed-topic", groupId = "order-group")
+    public void handlePaymentFailed(String message) {
+        log.info("Otrzymano informację o nieudanej płatności: {}", message);
+        // Tutaj można obsłużyć nieudaną płatność, np. zmienić status zamówienia
     }
 }

@@ -16,4 +16,6 @@ public class OrderCreatedEvent {
     private UUID orderId;
     private String email;
     private BigDecimal amountToPay;
+    private String paymentMethod;
+    private String currency;
 }
