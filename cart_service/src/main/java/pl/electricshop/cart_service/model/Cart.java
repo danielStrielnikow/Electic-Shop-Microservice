@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -19,13 +20,16 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@RedisHash(value = "carts", timeToLive = 259200)
+@RedisHash(value = "carts", timeToLive = 900)
 public class Cart implements Serializable {
 
     @Id
     private UUID userId;
 
     private List<CartItem> items = new ArrayList<>();
+
+
+    private LocalDateTime  reservationUntil;
 
     /**
      * Oblicza całkowitą cenę koszyka.
@@ -39,5 +43,10 @@ public class Cart implements Serializable {
                     return price.multiply(qty).subtract(discount);
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public Cart(UUID userId, List<CartItem> items) {
+        this.userId = userId;
+        this.items = items;
     }
 }

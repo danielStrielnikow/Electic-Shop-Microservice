@@ -16,7 +16,9 @@ import pl.electricshop.common.events.payment.OrderPlacedEvent;
 import pl.electricshop.grpc.ProductCartResponse;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -52,11 +54,19 @@ public class CartService {
             throw new IllegalArgumentException("Produkt o numerze " + productNumber + " nie istnieje");
         }
 
-        // 3. Sprawdź dostępność stock
-        if (productData.getQuantity() < quantity) {
-            throw new IllegalStateException(
-                    "Niewystarczająca ilość produktu. Dostępne: " + productData.getQuantity()
-            );
+        // 2. ASYNCHRONICZNA REZERWACJA w Inventory Service
+        // Dzięki spring.threads.virtual.enabled=true to zapytanie nie blokuje wątku systemowego
+        CompletableFuture<Boolean> reservationFuture = CompletableFuture.supplyAsync(() -> {
+            // Tu docelowo wywołanie gRPC do InventoryService
+            // return inventoryClient.createTemporaryReservation(productNumber, quantity, 15); // rezerwacja na 15 minut
+            log.info("STUB: Symulacja - wywołanie gRPC do Inventory w celu rezerwacji produktu.");
+            return true;
+        });
+
+
+        // 3. Sprawdź wynik rezerwacji
+        if (!reservationFuture.join()) {
+            throw new IllegalStateException("Nie udało się zarezerwować produktu w magazynie.");
         }
 
         // 4. Utwórz CartItem ze SNAPSHOT danych produktu
@@ -67,6 +77,9 @@ public class CartService {
                 (double) productData.getDiscount(),
                 productData.getPrice()
         );
+
+        Cart cart = getCart(userId);
+        cart.setReservationUntil(LocalDateTime.now().plusMinutes(15));
 
         // 5. Dodaj do koszyka
         return addItemToCart(userId, newItem);
@@ -134,7 +147,15 @@ public class CartService {
         log.info("Zamówienie nr {} udane. Usuwam koszyk usera {}", event.getEmail(), event.getEmail());
 
         if (event.getUserId() != null) {
-            clearCart(event.getUserId());
+            CompletableFuture.runAsync(() -> {
+                try {
+                    clearCart(event.getUserId());
+                    log.info("Koszyk usera {} został usunięty po zamówieniu.", event.getUserId());
+                }catch (Exception e) {
+                    log.error("Błąd podczas czyszczenia koszyka dla użytkownika: {}", event.getUserId(), e);
+                    // Tutaj można dodać mechanizm ponawiania (retry)
+                }
+            });
         } else {
             log.warn("Nie można usunąć koszyka - brak userId w evencie OrderPlacedEvent");
         }
@@ -152,6 +173,10 @@ public class CartService {
         // 2. Walidacja: Pusty koszyk nie może być zamówiony
         if (cart.getItems().isEmpty()) {
             throw new IllegalStateException("Koszyk jest pusty! Nie można złożyć zamówienia.");
+        }
+
+        if (cart.getReservationUntil().isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("Twoja rezerwacja wygasła. Odśwież koszyk, aby spróbować ponownie.");
         }
 
         // 3. Mapowanie CartItem (Redis/Mongo) -> CartItemPayload (Event/Kafka)

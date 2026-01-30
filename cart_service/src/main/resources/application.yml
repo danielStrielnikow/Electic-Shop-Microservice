@@ -19,6 +19,11 @@ spring:
             # Dodajemy nagłówek z typem, żeby Consumer wiedział co odczytać
         spring.json.add.type.headers: true
 
+  #  Thread Pool     Configuration
+  threads:
+    virtual:
+      enabled: true
+
 # Fallback configuration (used when Config Server is unavailable)
 server:
   port: 8084
