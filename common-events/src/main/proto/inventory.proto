@@ -16,6 +16,9 @@ service InventoryGrpcService {
 
   // Anulowanie rezerwacji (przy usunięciu z koszyka)
   rpc CancelReservation (CancelReservationRequest) returns (CancelReservationResponse);
+
+  // Aktualizacja rezerwacji - zmiana ilości zarezerwowanych produktów
+  rpc UpdateReservation (UpdateReservationRequest) returns (UpdateReservationResponse);
 }
 
 // Żądanie rezerwacji
@@ -51,4 +54,16 @@ message CancelReservationRequest {
 message CancelReservationResponse {
   bool success = 1;
   string message = 2;
+}
+
+// === AKTUALIZACJA REZERWACJI ===
+message UpdateReservationRequest {
+  string reservation_id = 1;  // format: "userId:productNumber"
+  int32 new_quantity = 2;     // nowa ilość do zarezerwowania
+}
+
+message UpdateReservationResponse {
+  bool success = 1;
+  string message = 2;
+  int32 reserved_quantity = 3;  // faktycznie zarezerwowana ilość
 }

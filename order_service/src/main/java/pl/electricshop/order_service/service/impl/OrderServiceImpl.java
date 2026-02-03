@@ -14,7 +14,6 @@ import pl.electricshop.order_service.mapper.OrderMapper;
 import pl.electricshop.order_service.model.Order;
 import pl.electricshop.order_service.model.enums.OrderStatus;
 import pl.electricshop.order_service.repository.OrderRepository;
-import pl.electricshop.order_service.service.InventoryClient;
 import pl.electricshop.order_service.service.OrderService;
 
 import java.math.BigDecimal;
@@ -32,7 +31,6 @@ public class OrderServiceImpl implements OrderService {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final UserServiceClient userClient;
     private final OrderMapper orderMapper;
-    private final InventoryClient inventoryClient;
 
     /**
      * Główna metoda "Place Order".
@@ -48,19 +46,9 @@ public class OrderServiceImpl implements OrderService {
                 () -> fetchAddressOrThrow(event.getAddressId())
         );
 
-        CompletableFuture<Boolean> inventoryFuture = CompletableFuture.supplyAsync(
-                () -> inventoryClient.reserveProducts(event.getItems())
-        );
 
         // 2. Czekamy na oba wyniki (Join)
         AddressDTO addressDTO = addressFuture.join();
-        boolean isReserved = inventoryFuture.join();
-
-        if (!isReserved) {
-            // TODO: Wyślij event OrderFailedEvent
-            log.error("Brak towaru na stanie! Zamówienie odrzucone: {}", event.getEmail());
-            throw new RuntimeException("Nie można zarezerwować produktów.");
-        }
 
 
         Order order = orderMapper.createOrderEntity(event, addressDTO);
@@ -111,18 +99,17 @@ public class OrderServiceImpl implements OrderService {
                 ))
                 .collect(Collectors.toList());
 
-        UUID userID = UUID.fromString("3afff0cb-cd89-4977-842b-0e1d3491f504");
         // 2. Tworzenie Eventu
         OrderPlacedEvent event = new OrderPlacedEvent(
                 order.getUuid().toString(),
-                userID,
+                order.getUserId(),
                 order.getEmail(),
                 order.getTotalAmount(),
                 itemPayloads,
                 order.getAddressSnapshot().getCity(),
                 order.getAddressSnapshot().getStreet(),
                 LocalDateTime.now().toString());
-        order.setOrderStatus(OrderStatus.DELIVERED);
+        order.setOrderStatus(OrderStatus.PAID);
         orderRepository.save(order);
         // 3. Wysłanie
         kafkaTemplate.send("order-placed-topic", event);
@@ -132,13 +119,8 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public void handlePaymentSucceeded(PaymentSucceededEvent event) {
         log.info("Otrzymano potwierdzenie płatności: {}", event.orderId());
-        UUID orderId = UUID.fromString(event.orderId());
-        try {
-            finalizeOrder(orderId);
-            log.info("Zamówienie {} zostało sfinalizowane po płatności.", orderId);
-        } catch (Exception e) {
-            log.error("Błąd podczas finalizacji zamówienia po płatności: {}", orderId, e);
-        }
+        finalizeOrder(UUID.fromString(event.orderId()));
+        log.info("Zamówienie {} zostało sfinalizowane po płatności.", event.orderId());
     }
 
     @KafkaListener(topics = "payment-failed-topic", groupId = "order-group")

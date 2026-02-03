@@ -106,26 +106,37 @@ public class CartService {
     }
 
     /**
-     * Aktualizuje ilość produktu w koszyku.
+     * Aktualizuje ilość produktu w koszyku wraz z rezerwacją w Inventory Service.
      */
     public Cart updateQuantity(UUID userId, String productNumber, int newQuantity) {
         log.info("Aktualizacja ilości produktu {} na {} dla użytkownika {}", productNumber, newQuantity, userId);
 
-        // 1. Sprawdź dostępność w INVENTORY
-        AvailabilityResponse availability = inventoryGrpcClient.checkAvailability(productNumber);
-        if (availability.getAvailableQuantity() < newQuantity) {
-            throw new IllegalStateException(
-                    "Niewystarczająca ilość. Dostępne: " + availability.getAvailableQuantity()
-            );
-        }
-
         Cart cart = getCart(userId);
 
-        cart.getItems().stream()
-                .filter(item -> item.getProductNumber().equals(productNumber))
+        // Znajdź item w koszyku
+        CartItem item = cart.getItems().stream()
+                .filter(i -> i.getProductNumber().equals(productNumber))
                 .findFirst()
-                .ifPresent(item -> item.setQuantity(newQuantity));
+                .orElseThrow(() -> new IllegalArgumentException("Produkt " + productNumber + " nie znajduje się w koszyku"));
 
+        if (item.getReservationId() == null) {
+            throw new IllegalStateException("Brak rezerwacji dla produktu " + productNumber);
+        }
+
+        // Aktualizuj rezerwację w Inventory Service
+        var updateResponse = inventoryGrpcClient.updateReservation(item.getReservationId(), newQuantity);
+
+        if (!updateResponse.getSuccess()) {
+            throw new IllegalStateException("Nie udało się zaktualizować rezerwacji: " + updateResponse.getMessage());
+        }
+
+        // Zaktualizuj ilość w koszyku
+        item.setQuantity(newQuantity);
+
+        // Odśwież czas wygaśnięcia rezerwacji
+        cart.setReservationUntil(LocalDateTime.now().plusMinutes(RESERVATION_MINUTES));
+
+        log.info("Zaktualizowano ilość produktu {} na {} (rezerwacja: {})", productNumber, newQuantity, item.getReservationId());
         return cartRepository.save(cart);
     }
 
@@ -226,6 +237,10 @@ public class CartService {
         log.info("Wysłano event checkoutu na Kafkę dla usera: {}. Kwota: {}", userId, totalPrice);
     }
 
+    /**
+     * Po sukcesie płatności - tylko usuwa koszyk z Redis.
+     * NIE anuluje rezerwacji - te są obsługiwane przez Inventory Service (handleOrderPlacedEvent).
+     */
     @KafkaListener(topics = "order-placed-topic", groupId = "cart-service-group")
     @Transactional
     public void cleanUpCart(OrderPlacedEvent event) {
@@ -234,8 +249,9 @@ public class CartService {
             return;
         }
 
-        log.info("Odebrano OrderPlacedEvent dla usera {}. Czyszczenie koszyka...", event.getUserId());
-        clearCart(event.getUserId());
+        log.info("Odebrano OrderPlacedEvent dla usera {}. Usuwanie koszyka (bez anulowania rezerwacji)...", event.getUserId());
+        // Tylko usuwamy koszyk z Redis - rezerwacje są już obsługiwane przez Inventory Service
+        cartRepository.deleteById(event.getUserId().toString());
     }
 
 }

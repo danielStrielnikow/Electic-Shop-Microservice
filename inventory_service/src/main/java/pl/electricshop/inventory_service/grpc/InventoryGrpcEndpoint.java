@@ -88,4 +88,34 @@ public class InventoryGrpcEndpoint extends InventoryGrpcServiceGrpc.InventoryGrp
 
         responseObserver.onCompleted();
     }
+
+    @Override
+    public void updateReservation(UpdateReservationRequest request, StreamObserver<UpdateReservationResponse> responseObserver) {
+        String reservationId = request.getReservationId();
+        int newQuantity = request.getNewQuantity();
+
+        log.info("gRPC: updateReservation(reservationId={}, newQuantity={})", reservationId, newQuantity);
+
+        try {
+            int result = inventoryService.updateReservation(reservationId, newQuantity);
+
+            boolean success = result >= 0;
+            UpdateReservationResponse response = UpdateReservationResponse.newBuilder()
+                    .setSuccess(success)
+                    .setReservedQuantity(success ? result : 0)
+                    .setMessage(success ? "Rezerwacja zaktualizowana" : "Nie udało się zaktualizować rezerwacji")
+                    .build();
+
+            responseObserver.onNext(response);
+        } catch (Exception e) {
+            log.error("Błąd aktualizacji rezerwacji: {}", e.getMessage());
+            UpdateReservationResponse response = UpdateReservationResponse.newBuilder()
+                    .setSuccess(false)
+                    .setMessage("Błąd: " + e.getMessage())
+                    .build();
+            responseObserver.onNext(response);
+        }
+
+        responseObserver.onCompleted();
+    }
 }

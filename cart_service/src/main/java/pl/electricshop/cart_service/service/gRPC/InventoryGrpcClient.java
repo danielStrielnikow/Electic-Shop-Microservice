@@ -75,4 +75,27 @@ public class InventoryGrpcClient {
             throw new RuntimeException("Błąd komunikacji z Inventory Service: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * Aktualizuje rezerwację produktu - zmienia ilość zarezerwowaną.
+     * @param reservationId format: "userId:productNumber"
+     * @param newQuantity nowa ilość do zarezerwowania
+     */
+    public UpdateReservationResponse updateReservation(String reservationId, int newQuantity) {
+        log.info("gRPC: updateReservation({}, newQty={})", reservationId, newQuantity);
+
+        UpdateReservationRequest request = UpdateReservationRequest.newBuilder()
+                .setReservationId(reservationId)
+                .setNewQuantity(newQuantity)
+                .build();
+
+        try {
+            UpdateReservationResponse response = inventoryStub.updateReservation(request);
+            log.info("Aktualizacja rezerwacji: success={}, reservedQty={}", response.getSuccess(), response.getReservedQuantity());
+            return response;
+        } catch (Exception e) {
+            log.error("Błąd gRPC updateReservation: {}", e.getMessage());
+            throw new RuntimeException("Błąd komunikacji z Inventory Service: " + e.getMessage(), e);
+        }
+    }
 }
