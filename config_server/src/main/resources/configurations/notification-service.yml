@@ -2,6 +2,7 @@ server:
   port: 8082
 
 spring:
+  # Mail Configuration
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -13,8 +14,41 @@ spring:
           auth: true
           starttls:
             enable: true
+            required: true
+
+  # Thymeleaf Configuration
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    cache: false
+
+  # Spring Cloud Stream Configuration (Kafka)
   cloud:
+    function:
+      definition: userRegistration;passwordReset
     stream:
       kafka:
         binder:
           brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      bindings:
+        userRegistration-in-0:
+          destination: user-registration
+          group: notification-service-group
+        passwordReset-in-0:
+          destination: password-reset
+          group: notification-service-group
+
+# Application Configuration
+app:
+  mail:
+    from: ${MAIL_FROM:noreply@electricshop.pl}
+    password-reset:
+      subject: ${PASSWORD_RESET_SUBJECT:Reset hasla}
+      expiry-minutes: ${PASSWORD_RESET_EXPIRY_MINUTES:15}
+    email-verification:
+      subject: ${EMAIL_VERIFICATION_SUBJECT:Weryfikacja email}
+      expiry-minutes: ${EMAIL_VERIFICATION_EXPIRY_MINUTES:60}
+  url:
+    front: ${APP_BASE_URL:http://localhost:3000}

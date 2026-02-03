@@ -1,26 +1,13 @@
 server:
   port: 8081
 
-# gRPC Server Configuration
-grpc:
-  server:
-    port: 9091
-
 spring:
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5433}/${POSTGRES_DB:electric_shop_db}
     username: ${POSTGRES_USER:electric_user}
     password: ${POSTGRES_PASSWORD:electric_password}
     driver-class-name: org.postgresql.Driver
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-  cloud:
-    stream:
-      kafka:
-        binder:
-          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -30,10 +17,43 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         default_schema: users
+
   flyway:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
-    table: user_schema_version
+    table: users_schema_version
     schemas: users
     default-schema: users
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # Spring Cloud Stream Configuration (Kafka)
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      bindings:
+        userRegistration-out-0:
+          destination: user-registration
+        passwordReset-out-0:
+          destination: password-reset
+
+# JWT Configuration
+app:
+  jwt:
+    private-key: classpath:certs/private.pem
+    public-key: classpath:certs/public.pem
+    expiration: ${JWT_EXPIRATION:3600000}
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+  security:
+    hmac-secret: ${HMAC_SECRET:xR9pL2mN8vQ4tY7wE3kS6jH1bC5fG9zX0aM4nP8qW2uV}
+
+# gRPC Server Configuration
+grpc:
+  server:
+    port: 9091

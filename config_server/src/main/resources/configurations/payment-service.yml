@@ -1,5 +1,5 @@
 server:
-  port: 8085
+  port: 8086
 
 spring:
   datasource:
@@ -16,12 +16,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-        default_schema: orders
-
-  # Virtual Threads
-  threads:
-    virtual:
-      enabled: true
+        default_schema: payments
 
   # Kafka Configuration
   kafka:
@@ -32,6 +27,7 @@ spring:
       properties:
         spring.json.add.type.headers: true
     consumer:
+      group-id: payment-service-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
@@ -43,12 +39,11 @@ spring:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
-    table: order_schema_version
-    schemas: orders
-    default-schema: orders
+    table: payment_schema_version
+    schemas: payments
+    default-schema: payments
     create-schemas: true
 
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+# Stripe Configuration
+stripe:
+  api-key: ${STRIPE_API_KEY:}

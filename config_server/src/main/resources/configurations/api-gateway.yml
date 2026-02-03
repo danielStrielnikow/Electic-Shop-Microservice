@@ -1,46 +1,51 @@
 server:
   port: 8080
 
-# JWT Configuration - RS256 with public key only (for validation)
-app:
-  jwt:
-    public-key: classpath:certs/public.pem
-  gateway:
-    public-paths:
-      - /api/v1/auth/**
-      - /api/v1/products/**
-      - /api/v1/categories/**
-      - /actuator/**
-
-# gRPC Client Configuration
-grpc:
-  client:
-    user-service:
-      address: ${GRPC_CLIENT_USER_SERVICE_ADDRESS:static://localhost:9091}
-      negotiation-type: plaintext
-
 spring:
   cloud:
     gateway:
+      discovery:
+        locator:
+          enabled: false
+
       routes:
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/api/v1/users/**,/api/v1/auth/**
-        - id: product-service
-          uri: lb://product-service
-          predicates:
-            - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/admin/**
+        # Cart Service Routes (must be before product-service - more specific path)
         - id: cart-service
-          uri: lb://cart-service
+          uri: lb://CART-SERVICE
           predicates:
             - Path=/api/v1/cart/**
+
+        # Order Service Routes
         - id: order-service
-          uri: lb://order-service
+          uri: lb://ORDER-SERVICE
           predicates:
             - Path=/api/v1/orders/**
+
+        # Product Service Routes
+        - id: product-service
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/admin/**
+
+        # User Service Routes
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/auth/**, /api/admin/**, /api/users/**, /api/addresses/**
+          filters:
+            - StripPrefix=1
+
+        # Notification Service Routes
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - StripPrefix=1
+
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
       globalcors:
         cors-configurations:
           '[/**]':
@@ -52,3 +57,46 @@ spring:
               - DELETE
               - OPTIONS
             allowedHeaders: "*"
+
+# JWT Configuration - RS256 with public key only (for validation)
+app:
+  jwt:
+    public-key: classpath:certs/public.pem
+  gateway:
+    public-paths:
+      # Auth endpoints (new gRPC-based)
+      - /api/v1/auth/**
+      # Legacy auth endpoints
+      - /api/auth/login
+      - /api/auth/register
+      - /api/auth/logout
+      - /api/auth/refresh
+      - /api/auth/forgot-password
+      - /api/auth/validate-password-token/**
+      - /api/auth/resend-verification-email
+      - /api/auth/verify-email/**
+      - /api/auth/reset-password
+      - /api/auth/validate-verification-email-token/**
+      - /api/auth/email-verification-status
+      # Product service public endpoints
+      - /api/v1/products/**
+      - /api/v1/categories/**
+      # Documentation
+      - /api/v3/api-docs/**
+      - /api/swagger-ui/**
+      - /api/swagger-ui.html
+      # Actuator
+      - /actuator/**
+
+# gRPC Client Configuration
+grpc:
+  client:
+    user-service:
+      address: ${GRPC_CLIENT_USER_SERVICE_ADDRESS:static://localhost:9091}
+      negotiation-type: plaintext
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    pl.electricshop.gateway: INFO
