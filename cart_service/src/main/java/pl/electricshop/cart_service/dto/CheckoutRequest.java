@@ -1,6 +1,5 @@
 package pl.electricshop.cart_service.dto;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,14 +8,15 @@ import lombok.Setter;
 
 import java.util.UUID;
 
+/**
+ * Request body dla checkout.
+ * Email jest pobierany z headera X-User-Email (przekazywany przez API Gateway z JWT).
+ */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class CheckoutRequest {
-    @Email(message = "Invalid email format")
-    @NotNull(message = "Email is required")
-    private String email;
 
     @NotNull(message = "Address ID is required")
     private UUID addressId;

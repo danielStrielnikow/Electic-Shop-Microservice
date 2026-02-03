@@ -101,15 +101,19 @@ public class CartController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Checkout - składa zamówienie.
+     * Email jest pobierany z headera X-User-Email (przekazywany przez API Gateway z JWT).
+     * AddressId użytkownik wybiera z listy swoich adresów.
+     */
     @PostMapping("/checkout")
     public ResponseEntity<Void> checkout(
             @RequestHeader("X-User-ID") UUID userId,
+            @RequestHeader("X-User-Email") String email,
             @Valid @RequestBody CheckoutRequest request) {
 
-        log.info("POST /api/v1/cart/checkout for user: {}", userId);
-
         // Wywołanie logiki biznesowej (rzucenie eventu na Kafkę)
-        cartService.checkout(userId, request.getAddressId(), request.getEmail());
+        cartService.checkout(userId, request.getAddressId(), email);
 
         // Zwracamy 202 ACCEPTED, bo proces dzieje się w tle (asynchronicznie)
         return ResponseEntity.accepted().build();

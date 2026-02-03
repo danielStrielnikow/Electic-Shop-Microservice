@@ -51,6 +51,9 @@ dependencies {
 
     implementation 'org.springframework.kafka:spring-kafka'
 
+    // Spring Dotenv - czytanie zmiennych z .env
+    implementation 'me.paulschwarz:spring-dotenv:3.0.0'
+
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
 

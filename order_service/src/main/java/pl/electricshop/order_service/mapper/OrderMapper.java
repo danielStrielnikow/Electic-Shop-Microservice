@@ -39,7 +39,7 @@ public interface OrderMapper {
     // Ignorujemy pola, których nie ustawiamy w tym momencie
     @Mapping(target = "orderNumber", ignore = true)
     @Mapping(target = "paymentId", ignore = true)
-    @Mapping(target = "userId", ignore = true) // Chyba że jest w evencie, wtedy: source = "event.userId"
+    @Mapping(target = "userId", source = "event.userId")
     Order createOrderEntity(CartCheckoutEvent event, AddressDTO addressDTO);
 
     /**
