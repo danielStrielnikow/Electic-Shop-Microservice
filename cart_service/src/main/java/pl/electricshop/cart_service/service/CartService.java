@@ -10,15 +10,17 @@ import pl.electricshop.cart_service.model.Cart;
 import pl.electricshop.cart_service.model.CartItem;
 import pl.electricshop.cart_service.repository.CartRepository;
 import pl.electricshop.cart_service.service.gRPC.CartGrpcService;
+import pl.electricshop.cart_service.service.gRPC.InventoryGrpcClient;
 import pl.electricshop.common.events.cart.CartCheckoutEvent;
 import pl.electricshop.common.events.cart.CartItemPayload;
 import pl.electricshop.common.events.payment.OrderPlacedEvent;
+import pl.electricshop.grpc.AvailabilityResponse;
 import pl.electricshop.grpc.ProductCartResponse;
+import pl.electricshop.grpc.ReservationResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -28,7 +30,10 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final CartGrpcService cartGrpcService;
+    private final InventoryGrpcClient inventoryGrpcClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    private static final int RESERVATION_MINUTES = 15;
 
     public Cart getCart(UUID userId) {
         return cartRepository.findByUserId(userId)
@@ -36,86 +41,81 @@ public class CartService {
     }
 
     /**
-     * Dodaje produkt do koszyka, pobierając aktualne dane z Product Service przez gRPC.
-     *
-     * @param userId        ID użytkownika
-     * @param productNumber numer produktu (np. "EL-ABC123")
-     * @param quantity      ilość do dodania
-     * @return zaktualizowany koszyk
+     * Dodaje produkt do koszyka z rezerwacją w Inventory Service.
      */
     public Cart addToCart(UUID userId, String productNumber, int quantity) {
-        log.info("Adding product {} (qty: {}) to cart for user {}", productNumber, quantity, userId);
+        log.info("Dodawanie produktu {} (qty: {}) do koszyka użytkownika {}", productNumber, quantity, userId);
 
-        // 1. Pobierz aktualne dane produktu przez gRPC
+        // 1. Pobierz dane produktu z Product Service
         ProductCartResponse productData = cartGrpcService.getProductDetails(productNumber);
-
-        // 2. Sprawdź czy produkt istnieje
         if (productData.getProductNumber().isEmpty()) {
-            throw new IllegalArgumentException("Produkt o numerze " + productNumber + " nie istnieje");
+            throw new IllegalArgumentException("Produkt " + productNumber + " nie istnieje");
         }
 
-        // 2. ASYNCHRONICZNA REZERWACJA w Inventory Service
-        // Dzięki spring.threads.virtual.enabled=true to zapytanie nie blokuje wątku systemowego
-        CompletableFuture<Boolean> reservationFuture = CompletableFuture.supplyAsync(() -> {
-            // Tu docelowo wywołanie gRPC do InventoryService
-            // return inventoryClient.createTemporaryReservation(productNumber, quantity, 15); // rezerwacja na 15 minut
-            log.info("STUB: Symulacja - wywołanie gRPC do Inventory w celu rezerwacji produktu.");
-            return true;
-        });
+        // 2. Rezerwacja w Inventory Service przez gRPC
+        ReservationResponse reservation = inventoryGrpcClient.reserveProduct(
+                productNumber,
+                quantity,
+                userId.toString()
+        );
 
-
-        // 3. Sprawdź wynik rezerwacji
-        if (!reservationFuture.join()) {
-            throw new IllegalStateException("Nie udało się zarezerwować produktu w magazynie.");
+        if (!reservation.getSuccess()) {
+            throw new IllegalStateException("Nie udało się zarezerwować produktu: " + reservation.getMessage());
         }
 
-        // 4. Utwórz CartItem ze SNAPSHOT danych produktu
+        log.info("Rezerwacja utworzona: {}", reservation.getReservationId());
+
+        // 3. Pobierz lub utwórz koszyk
+        Cart cart = getCart(userId);
+
+        // 4. Utwórz CartItem z danymi produktu
         CartItem newItem = new CartItem(
                 productData.getProductNumber(),
                 productData.getProductName(),
                 quantity,
-                (double) productData.getDiscount(),
+                productData.getDiscount(),
                 productData.getPrice()
         );
+        newItem.setReservationId(reservation.getReservationId());  // format: "userId:productNumber"
 
-        Cart cart = getCart(userId);
-        cart.setReservationUntil(LocalDateTime.now().plusMinutes(15));
+        // 5. Dodaj/aktualizuj w koszyku
+        addOrUpdateItem(cart, newItem);
 
-        // 5. Dodaj do koszyka
-        return addItemToCart(userId, newItem);
-    }
-
-    /**
-     * Wewnętrzna metoda dodająca CartItem do koszyka.
-     */
-    private Cart addItemToCart(UUID userId, CartItem newItem) {
-        Cart cart = getCart(userId);
-
-        Optional<CartItem> existingItem = cart.getItems().stream()
-                .filter(item -> item.getProductNumber().equals(newItem.getProductNumber()))
-                .findFirst();
-
-        if (existingItem.isPresent()) {
-            // Aktualizuj ilość istniejącego produktu
-            existingItem.get().setQuantity(existingItem.get().getQuantity() + newItem.getQuantity());
-            log.info("Updated quantity for product {} in cart", newItem.getProductNumber());
-        } else {
-            // Dodaj nowy produkt
-            cart.getItems().add(newItem);
-            log.info("Added new product {} to cart", newItem.getProductNumber());
-        }
+        // 6. Ustaw czas wygaśnięcia rezerwacji
+        cart.setReservationUntil(LocalDateTime.now().plusMinutes(RESERVATION_MINUTES));
 
         return cartRepository.save(cart);
     }
 
-    public Cart updateQuantity(UUID userId, String productNumber, int newQuantity) {
-        log.info("Updating quantity for product {} to {} for user {}", productNumber, newQuantity, userId);
+    /**
+     * Dodaje nowy item lub aktualizuje ilość istniejącego.
+     */
+    private void addOrUpdateItem(Cart cart, CartItem newItem) {
+        Optional<CartItem> existing = cart.getItems().stream()
+                .filter(item -> item.getProductNumber().equals(newItem.getProductNumber()))
+                .findFirst();
 
-        // Walidacja przez gRPC
-        ProductCartResponse productData = cartGrpcService.getProductDetails(productNumber);
-        if (productData.getQuantity() < newQuantity) {
+        if (existing.isPresent()) {
+            existing.get().setQuantity(existing.get().getQuantity() + newItem.getQuantity());
+            existing.get().setReservationId(newItem.getReservationId());
+            log.info("Zaktualizowano ilość produktu {} w koszyku", newItem.getProductNumber());
+        } else {
+            cart.getItems().add(newItem);
+            log.info("Dodano nowy produkt {} do koszyka", newItem.getProductNumber());
+        }
+    }
+
+    /**
+     * Aktualizuje ilość produktu w koszyku.
+     */
+    public Cart updateQuantity(UUID userId, String productNumber, int newQuantity) {
+        log.info("Aktualizacja ilości produktu {} na {} dla użytkownika {}", productNumber, newQuantity, userId);
+
+        // 1. Sprawdź dostępność w INVENTORY
+        AvailabilityResponse availability = inventoryGrpcClient.checkAvailability(productNumber);
+        if (availability.getAvailableQuantity() < newQuantity) {
             throw new IllegalStateException(
-                    "Niewystarczająca ilość produktu. Dostępne: " + productData.getQuantity()
+                    "Niewystarczająca ilość. Dostępne: " + availability.getAvailableQuantity()
             );
         }
 
@@ -129,36 +129,49 @@ public class CartService {
         return cartRepository.save(cart);
     }
 
+    /**
+     * Usuwa produkt z koszyka i anuluje rezerwację.
+     */
     public Cart removeProductFromCart(UUID userId, String productNumber) {
-        log.info("Removing product {} from cart for user {}", productNumber, userId);
+        log.info("Usuwanie produktu {} z koszyka użytkownika {}", productNumber, userId);
+
         Cart cart = getCart(userId);
+
+        // Znajdź item i anuluj rezerwację
+        cart.getItems().stream()
+                .filter(item -> item.getProductNumber().equals(productNumber))
+                .findFirst()
+                .ifPresent(item -> {
+                    if (item.getReservationId() != null) {
+                        inventoryGrpcClient.cancelReservation(item.getReservationId());
+                        log.info("Anulowano rezerwację: {}", item.getReservationId());
+                    }
+                });
+
         cart.getItems().removeIf(item -> item.getProductNumber().equals(productNumber));
         return cartRepository.save(cart);
     }
 
+    /**
+     * Czyści koszyk i anuluje wszystkie rezerwacje.
+     */
     public void clearCart(UUID userId) {
-        log.info("Clearing cart for user {}", userId);
-        cartRepository.deleteById(userId.toString());
-    }
+        log.info("Czyszczenie koszyka użytkownika {}", userId);
 
-    @KafkaListener(topics = "order-placed-topic", groupId = "cart-service-group")
-    @Transactional
-    public void cleanUpCart(OrderPlacedEvent event) {
-        log.info("Zamówienie nr {} udane. Usuwam koszyk usera {}", event.getEmail(), event.getEmail());
+        Cart cart = getCart(userId);
 
-        if (event.getUserId() != null) {
-            CompletableFuture.runAsync(() -> {
+        // Anuluj wszystkie rezerwacje
+        cart.getItems().forEach(item -> {
+            if (item.getReservationId() != null) {
                 try {
-                    clearCart(event.getUserId());
-                    log.info("Koszyk usera {} został usunięty po zamówieniu.", event.getUserId());
-                }catch (Exception e) {
-                    log.error("Błąd podczas czyszczenia koszyka dla użytkownika: {}", event.getUserId(), e);
-                    // Tutaj można dodać mechanizm ponawiania (retry)
+                    inventoryGrpcClient.cancelReservation(item.getReservationId());
+                } catch (Exception e) {
+                    log.warn("Nie udało się anulować rezerwacji {}: {}", item.getReservationId(), e.getMessage());
                 }
-            });
-        } else {
-            log.warn("Nie można usunąć koszyka - brak userId w evencie OrderPlacedEvent");
-        }
+            }
+        });
+
+        cartRepository.deleteById(userId.toString());
     }
 
     /**
@@ -175,12 +188,11 @@ public class CartService {
             throw new IllegalStateException("Koszyk jest pusty! Nie można złożyć zamówienia.");
         }
 
-        if (cart.getReservationUntil().isBefore(LocalDateTime.now())) {
+        if (cart.getReservationUntil() != null && cart.getReservationUntil().isBefore(LocalDateTime.now())) {
             throw new IllegalStateException("Twoja rezerwacja wygasła. Odśwież koszyk, aby spróbować ponownie.");
         }
 
-        // 3. Mapowanie CartItem (Redis/Mongo) -> CartItemPayload (Event/Kafka)
-        // Musimy zamienić nasze wewnętrzne obiekty na te wspólne z common-events
+        // 3. Mapowanie CartItem -> CartItemPayload
         List<CartItemPayload> eventItems = cart.getItems().stream()
                 .map(item -> {
                     BigDecimal price = BigDecimal.valueOf(item.getProductPrice());
@@ -191,30 +203,39 @@ public class CartService {
                             item.getProductName(),
                             item.getQuantity(),
                             price,
-                            price.multiply(quantity) // Cena całkowita linii
+                            price.multiply(quantity)
                     );
                 })
                 .collect(Collectors.toList());
 
-        // 4. Obliczanie całkowitej kwoty (Total Price)
+        // 4. Obliczanie całkowitej kwoty
         BigDecimal totalPrice = cart.getTotalPrice();
 
         // 5. Tworzenie Eventu
         CartCheckoutEvent event = new CartCheckoutEvent(
                 userId,
                 email,
-                addressId, // ID adresu przekazane z Frontendu
+                addressId,
                 totalPrice,
                 eventItems
         );
 
         // 6. Wysyłka na Kafkę
-        // Topic "cart-checkout-topic" musi być taki sam jak w @KafkaListener w OrderService
         kafkaTemplate.send("cart-checkout-topic", event);
 
         log.info("Wysłano event checkoutu na Kafkę dla usera: {}. Kwota: {}", userId, totalPrice);
-
-        // UWAGA: Nie czyścimy koszyka tutaj!
-        // Koszyk czyścimy dopiero jak przyjdzie event "OrderPlacedEvent" (metoda cleanUpCart na dole).
     }
+
+    @KafkaListener(topics = "order-placed-topic", groupId = "cart-service-group")
+    @Transactional
+    public void cleanUpCart(OrderPlacedEvent event) {
+        if (event.getUserId() == null) {
+            log.warn("Otrzymano OrderPlacedEvent bez userId. Nie można wyczyścić koszyka.");
+            return;
+        }
+
+        log.info("Odebrano OrderPlacedEvent dla usera {}. Czyszczenie koszyka...", event.getUserId());
+        clearCart(event.getUserId());
+    }
+
 }

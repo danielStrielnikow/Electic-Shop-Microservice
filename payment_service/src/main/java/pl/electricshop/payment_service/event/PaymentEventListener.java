@@ -10,10 +10,14 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import pl.electricshop.common.events.payment.OrderCreatedEvent;
+import pl.electricshop.common.events.payment.PaymentFailedEvent;
+import pl.electricshop.common.events.payment.PaymentSucceededEvent;
 import pl.electricshop.payment_service.model.Payment;
 import pl.electricshop.payment_service.repository.PaymentRepository;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -52,20 +56,28 @@ public class PaymentEventListener {
             paymentRepository.save(payment);
 
             log.info("Zainicjowano płatność Stripe: {}", intent.getId());
-            paymentSucceeded();
+
+            // 3. Wyślij event PaymentSucceededEvent
+            paymentSucceeded(new PaymentSucceededEvent(
+                    payment.getOrderId().toString(),
+                    payment.getPgPaymentId(),
+                    "3afff0cb-cd89-4977-842b-0e1d3491f504", // userId - brak w tym evencie
+                    payment.getAmount(),
+                    payment.getCurrency(),
+                    Instant.now().toString()
+            ));
         } catch (StripeException e) {
             log.error("Błąd Stripe", e);
-            paymentFailed();
             // Tu można wysłać event PaymentFailedEvent
         }
     }
 
 
-    private void paymentSucceeded() {
-        kafkaTemplate.send("payment-succeeded-topic", "Przykładowa wiadomość o sukcesie płatności");
+    private void paymentSucceeded(PaymentSucceededEvent event) {
+        kafkaTemplate.send("payment-succeeded-topic", event);
     }
 
-    private void paymentFailed() {
-        kafkaTemplate.send("payment-failed-topic", "Przykładowa wiadomość o niepowodzeniu płatności");
+    private void paymentFailed(PaymentFailedEvent event) {
+        kafkaTemplate.send("payment-failed-topic", event);
     }
 }

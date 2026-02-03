@@ -21,4 +21,5 @@ message ProductCartResponse {
   int32 discount = 5;
   int32 specialPrice = 6;
   int32 quantity = 7;
+  string reservationId = 8;
 }

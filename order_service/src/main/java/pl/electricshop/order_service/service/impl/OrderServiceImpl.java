@@ -111,16 +111,17 @@ public class OrderServiceImpl implements OrderService {
                 ))
                 .collect(Collectors.toList());
 
+        UUID userID = UUID.fromString("3afff0cb-cd89-4977-842b-0e1d3491f504");
         // 2. Tworzenie Eventu
         OrderPlacedEvent event = new OrderPlacedEvent(
-                order.getUuid(),
-                order.getUserId(),
+                order.getUuid().toString(),
+                userID,
                 order.getEmail(),
                 order.getTotalAmount(),
                 itemPayloads,
                 order.getAddressSnapshot().getCity(),
                 order.getAddressSnapshot().getStreet(),
-                LocalDateTime.now());
+                LocalDateTime.now().toString());
         order.setOrderStatus(OrderStatus.DELIVERED);
         orderRepository.save(order);
         // 3. Wysłanie
@@ -128,25 +129,24 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @KafkaListener(topics = "payment-succeeded-topic", groupId = "order-group")
+    @Transactional
     public void handlePaymentSucceeded(PaymentSucceededEvent event) {
         log.info("Otrzymano potwierdzenie płatności: {}", event.orderId());
-        CompletableFuture.runAsync(() -> {
-            try {
-                finalizeOrder(event.orderId());
-                log.info("Zamówienie {} zostało sfinalizowane po płatności.", event.orderId());
-            } catch (Exception e) {
-                log.error("Błąd podczas finalizacji zamówienia po płatności: {}", event.orderId(), e);
-                // Tutaj można dodać mechanizm ponawiania (retry)
-            }
-        });
+        UUID orderId = UUID.fromString(event.orderId());
+        try {
+            finalizeOrder(orderId);
+            log.info("Zamówienie {} zostało sfinalizowane po płatności.", orderId);
+        } catch (Exception e) {
+            log.error("Błąd podczas finalizacji zamówienia po płatności: {}", orderId, e);
+        }
     }
 
     @KafkaListener(topics = "payment-failed-topic", groupId = "order-group")
     @Transactional
     public void handlePaymentFailed(PaymentFailedEvent event) {
         log.warn("Płatność nieudana dla zamówienia: {}. Powód: {}", event.orderId(), event.errorMessage());
-
-        orderRepository.findById(event.orderId()).ifPresent(order -> {
+        UUID orderId = UUID.fromString(event.orderId());
+        orderRepository.findById(orderId).ifPresent(order -> {
             // 1. Zmiana statusu
             order.setOrderStatus(OrderStatus.PAYMENT_FAILED);
             orderRepository.save(order);

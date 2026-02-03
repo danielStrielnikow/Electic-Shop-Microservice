@@ -18,6 +18,16 @@ spring:
       properties:
             # Dodajemy nagłówek z typem, żeby Consumer wiedział co odczytać
         spring.json.add.type.headers: true
+    consumer:
+      group-id: cart-service-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+          # To mówi Springowi: "użyj JSONa do czytania wiadomości"
+          spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+          # To pozwala na czytanie klas z Twojej biblioteki common-events
+          spring.json.trusted.packages: "pl.electricshop.*"
+          spring.json.use.type.headers: true
 
   #  Thread Pool     Configuration
   threads:
@@ -41,4 +51,7 @@ grpc:
   client:
     product-service:
       address: ${GRPC_CLIENT_PRODUCT_SERVICE_ADDRESS:static://localhost:9090}
+      negotiation-type: plaintext
+    inventory-service:
+      address: ${GRPC_CLIENT_INVENTORY_SERVICE_ADDRESS:static://localhost:9093}
       negotiation-type: plaintext

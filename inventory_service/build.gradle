@@ -1,0 +1,89 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.9'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.flywaydb.flyway' version '9.22.3'
+}
+
+group = 'pl.electricshop'
+version = '0.0.1-SNAPSHOT'
+description = 'inventory_service'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+
+ext {
+    set('springCloudVersion', "2025.0.1")
+}
+
+dependencies {
+    implementation project(':common-events')
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    implementation 'me.paulschwarz:spring-dotenv:3.0.0'
+    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    implementation 'org.springframework.cloud:spring-cloud-starter-stream-kafka'
+
+    // Server gRPC
+    implementation 'net.devh:grpc-server-spring-boot-starter:3.1.0.RELEASE'
+    implementation 'net.devh:grpc-common-spring-boot:3.1.0.RELEASE'
+
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
+}
+
+flyway {
+    def dbHost = System.getenv("POSTGRES_HOST") ?: "localhost"
+    def dbPort = System.getenv("POSTGRES_PORT") ?: "5433"
+    def dbName = System.getenv("POSTGRES_DB") ?: "electric_shop_db"
+
+    url = "jdbc:postgresql://${dbHost}:${dbPort}/${dbName}"
+    user = System.getenv("POSTGRES_USER") ?: "electric_user"
+    password = System.getenv("POSTGRES_PASSWORD") ?: "electric_password"
+    cleanDisabled = false
+    schemas = ["inventory"]
+    defaultSchema = "inventory"
+    createSchemas = true
+    locations = ["classpath:db/migration"]
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

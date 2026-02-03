@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "pl.electricshop.grpc";
+option java_outer_classname = "InventoryProto";
+
+package inventory;
+
+// Serwis obsługujący stany magazynowe i rezerwacje
+service InventoryGrpcService {
+  // Metoda do tworzenia tymczasowej rezerwacji (wywoływana przez Cart Service)
+  rpc ReserveProduct (ReservationRequest) returns (ReservationResponse);
+
+  // Metoda do sprawdzania dostępności bez rezerwacji
+  rpc CheckAvailability (AvailabilityRequest) returns (AvailabilityResponse);
+
+  // Anulowanie rezerwacji (przy usunięciu z koszyka)
+  rpc CancelReservation (CancelReservationRequest) returns (CancelReservationResponse);
+}
+
+// Żądanie rezerwacji
+message ReservationRequest {
+  string product_number = 1;
+  int32 quantity = 2;
+  string user_id = 3;
+}
+
+// Odpowiedź na żądanie rezerwacji
+message ReservationResponse {
+  bool success = 1;
+  string message = 2;
+  string reservation_id = 3;
+}
+
+// Zapytanie o dostępność
+message AvailabilityRequest {
+  string product_number = 1;
+}
+
+message AvailabilityResponse {
+  string product_number = 1;
+  int32 available_quantity = 2;
+}
+
+// === ANULOWANIE ===
+message CancelReservationRequest {
+  string reservation_id = 1;
+  string user_id = 2;
+}
+
+message CancelReservationResponse {
+  bool success = 1;
+  string message = 2;
+}

@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,7 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderPlacedEvent {
-    private UUID orderId;
+    private String orderId;
     private UUID userId;
     private String email;
 
@@ -26,5 +25,5 @@ public class OrderPlacedEvent {
     private String shippingCity;
     private String shippingStreet;
 
-    private LocalDateTime placedAt;
+    private String placedAt;
 }
