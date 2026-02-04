@@ -26,6 +26,8 @@ public class Payment extends BaseEntity {
 
     private UUID orderId;
 
+    private String userId;
+
     private BigDecimal amount;
 
     private String currency;

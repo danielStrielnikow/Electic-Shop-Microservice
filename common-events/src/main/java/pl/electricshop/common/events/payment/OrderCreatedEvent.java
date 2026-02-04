@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -14,8 +15,10 @@ import java.util.UUID;
 @AllArgsConstructor
 public class OrderCreatedEvent {
     private UUID orderId;
+    private String userId;
     private String email;
     private BigDecimal amountToPay;
     private String paymentMethod;
     private String currency;
+    private List<OrderItemPayload> items;
 }

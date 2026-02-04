@@ -46,4 +46,6 @@ spring:
 
 # Stripe Configuration
 stripe:
-  api-key: ${STRIPE_API_KEY:}
+  api-key: ${STRIPE_API_KEY}
+  publishable-key: ${STRIPE_PUBLISH_KEY}
+  web-hook: ${SECRET_HOOK}

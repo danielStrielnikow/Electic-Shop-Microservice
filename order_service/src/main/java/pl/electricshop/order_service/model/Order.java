@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import lombok.*;
 import pl.electricshop.common.events.base.BaseEntity;
 import pl.electricshop.order_service.model.enums.OrderStatus;
+import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,7 +21,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Order extends BaseEntity {
 
-    private UUID userId;
+    private String userId;
 
     private String orderNumber;
 
@@ -42,4 +43,15 @@ public class Order extends BaseEntity {
     private AddressSnapshot addressSnapshot;
 
     private String paymentId;
+
+    @PrePersist
+    public void generateId() {
+        if (this.orderNumber == null) {
+            this.orderNumber = "ELO-" + NanoIdUtils.randomNanoId(
+                    NanoIdUtils.DEFAULT_NUMBER_GENERATOR,
+                    "0123456789ABCDEF".toCharArray(),
+                    6
+            );
+        }
+    }
 }

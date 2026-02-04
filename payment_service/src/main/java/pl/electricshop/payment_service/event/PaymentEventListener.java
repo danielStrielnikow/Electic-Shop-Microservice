@@ -18,6 +18,7 @@ import pl.electricshop.payment_service.repository.PaymentRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,59 +26,53 @@ import java.util.UUID;
 public class PaymentEventListener {
 
     private final PaymentRepository paymentRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @KafkaListener(topics = "order-created-topic", groupId = "payment-service-group")
     @Transactional
     public void handleOrderCreated(OrderCreatedEvent event) {
         log.info("Odebrano nowe zamówienie: {}", event.getOrderId());
 
-        // 1. Stwórz PaymentIntent w Stripe
+        String productSummary = event.getItems().stream()
+                .map(item -> item.getProductName() + " (x" + item.getQuantity() + ")")
+                .collect(Collectors.joining(", "));
+
+
+        if (productSummary.length() > 490) {
+            productSummary = productSummary.substring(0, 490) + "...";
+        }
+
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
-                .setAmount(event.getAmountToPay().multiply(new BigDecimal(100)).longValue()) // Stripe chce kwotę w groszach (cents)!
+                .setAmount(event.getAmountToPay().multiply(new BigDecimal(100)).longValue())
                 .setCurrency("pln")
                 .setAutomaticPaymentMethods(
                         PaymentIntentCreateParams.AutomaticPaymentMethods.builder().setEnabled(true).build()
                 )
-                .putMetadata("orderId", event.getOrderId().toString()) // Ważne: powiązanie ID zamówienia w Stripe
+                .putMetadata("orderId", event.getOrderId().toString())
+                .putMetadata("product_summary", productSummary)
+                .putMetadata("email", event.getEmail())
                 .build();
 
         try {
             PaymentIntent intent = PaymentIntent.create(params);
 
-            // 2. Zapisz płatność w Twojej bazie Postgres
             Payment payment = new Payment();
             payment.setOrderId(event.getOrderId());
+            payment.setUserId(event.getUserId());
             payment.setAmount(event.getAmountToPay());
             payment.setCurrency(event.getCurrency());
-            payment.setPgPaymentId(intent.getId()); // ID ze Stripe (pi_123xyz...)
-            payment.setClientSecret(intent.getClientSecret()); // KLUCZOWE dla Frontendu!
+            payment.setPaymentMethod(event.getPaymentMethod());
+            payment.setPgPaymentId(intent.getId());
+            payment.setClientSecret(intent.getClientSecret());
+            payment.setPgStatus("PENDING");
+            payment.setPgName("STRIPE");
 
             paymentRepository.save(payment);
 
-            log.info("Zainicjowano płatność Stripe: {}", intent.getId());
+            log.info("Zainicjowano płatność Stripe: {}. Czekam na ruch użytkownika.", intent.getId());
 
-            // 3. Wyślij event PaymentSucceededEvent
-            paymentSucceeded(new PaymentSucceededEvent(
-                    payment.getOrderId().toString(),
-                    payment.getPgPaymentId(),
-                    "3afff0cb-cd89-4977-842b-0e1d3491f504", // userId - brak w tym evencie
-                    payment.getAmount(),
-                    payment.getCurrency(),
-                    Instant.now().toString()
-            ));
+
         } catch (StripeException e) {
-            log.error("Błąd Stripe", e);
-            // Tu można wysłać event PaymentFailedEvent
+            log.error("Błąd Stripe przy tworzeniu Intent", e);
         }
-    }
-
-
-    private void paymentSucceeded(PaymentSucceededEvent event) {
-        kafkaTemplate.send("payment-succeeded-topic", event);
-    }
-
-    private void paymentFailed(PaymentFailedEvent event) {
-        kafkaTemplate.send("payment-failed-topic", event);
     }
 }

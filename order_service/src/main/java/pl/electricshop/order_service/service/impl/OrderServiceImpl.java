@@ -70,12 +70,25 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void notifyPaymentService(Order order) {
+
+        List<OrderItemPayload> orderItems = order.getOrderItems().stream()
+                .map(item -> new OrderItemPayload(
+                        item.getProductNumber(),
+                        item.getProductName(),
+                        item.getQuantity(),
+                        item.getOrderedProductPrice(),
+                        item.getOrderedProductPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
+                ))
+                .toList();
+
         OrderCreatedEvent paymentEvent = new OrderCreatedEvent(
                 order.getUuid(),
+                order.getUserId(),
                 order.getEmail(),
                 order.getTotalAmount(),
                 "BLIK",
-                "PLN"
+                "PLN",
+                orderItems
         );
 
         log.info("Wysyłam zdarzenie OrderCreatedEvent do usługi płatności dla zamówienia: {}", order.getUuid());
@@ -84,7 +97,7 @@ public class OrderServiceImpl implements OrderService {
 
     // W OrderService (po otrzymaniu potwierdzenia płatności)
 
-    public void finalizeOrder(UUID orderId) {
+    public void finalizeOrder(UUID orderId, String paymentId) {
         Order order = orderRepository.findById(orderId).orElseThrow();
 
         // 1. Mapowanie pozycji zamówienia na Payload (dla maila)
@@ -99,6 +112,7 @@ public class OrderServiceImpl implements OrderService {
                 ))
                 .collect(Collectors.toList());
 
+        order.setPaymentId(paymentId);
         // 2. Tworzenie Eventu
         OrderPlacedEvent event = new OrderPlacedEvent(
                 order.getUuid().toString(),
@@ -119,7 +133,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public void handlePaymentSucceeded(PaymentSucceededEvent event) {
         log.info("Otrzymano potwierdzenie płatności: {}", event.orderId());
-        finalizeOrder(UUID.fromString(event.orderId()));
+        finalizeOrder(UUID.fromString(event.orderId()), event.paymentId());
         log.info("Zamówienie {} zostało sfinalizowane po płatności.", event.orderId());
     }
 

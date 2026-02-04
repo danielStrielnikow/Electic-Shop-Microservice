@@ -1,0 +1,2 @@
+ALTER TABLE payment
+ADD COLUMN user_id VARCHAR(255);

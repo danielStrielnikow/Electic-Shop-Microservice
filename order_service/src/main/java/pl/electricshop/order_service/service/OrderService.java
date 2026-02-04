@@ -9,5 +9,5 @@ public interface OrderService {
 
     void proccessOrder(CartCheckoutEvent event);
 
-    void finalizeOrder(UUID orderId);
+    void finalizeOrder(UUID orderId, String paymentId);
 }

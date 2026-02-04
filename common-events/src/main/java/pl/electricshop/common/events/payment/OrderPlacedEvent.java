@@ -15,7 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class OrderPlacedEvent {
     private String orderId;
-    private UUID userId;
+    private String userId;
     private String email;
 
     private BigDecimal totalPrice;
