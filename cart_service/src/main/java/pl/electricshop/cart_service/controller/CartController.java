@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pl.electricshop.cart_service.dto.AddToCartRequest;
 import pl.electricshop.cart_service.dto.CartResponse;
+import pl.electricshop.cart_service.dto.CheckoutRequest;
 import pl.electricshop.cart_service.dto.UpdateQuantityRequest;
 import pl.electricshop.cart_service.mapper.CartMapper;
 import pl.electricshop.cart_service.model.Cart;
@@ -99,4 +100,23 @@ public class CartController {
         cartService.clearCart(userId);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Checkout - składa zamówienie.
+     * Email jest pobierany z headera X-User-Email (przekazywany przez API Gateway z JWT).
+     * AddressId użytkownik wybiera z listy swoich adresów.
+     */
+    @PostMapping("/checkout")
+    public ResponseEntity<Void> checkout(
+            @RequestHeader("X-User-ID") UUID userId,
+            @RequestHeader("X-User-Email") String email,
+            @Valid @RequestBody CheckoutRequest request) {
+
+        // Wywołanie logiki biznesowej (rzucenie eventu na Kafkę)
+        cartService.checkout(userId, request.getAddressId(), email);
+
+        // Zwracamy 202 ACCEPTED, bo proces dzieje się w tle (asynchronicznie)
+        return ResponseEntity.accepted().build();
+    }
+
 }

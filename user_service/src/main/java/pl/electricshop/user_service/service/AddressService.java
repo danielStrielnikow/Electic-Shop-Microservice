@@ -111,4 +111,11 @@ public class AddressService {
         addressRepository.delete(address);
         log.info("Deleted address {} for user {}", addressId, userId);
     }
+
+    public AddressResponse getAddressByIdInternal(UUID addressId) {
+        Address address = addressRepository.findById(addressId)
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found with id: " + addressId));
+
+        return addressMapper.toResponse(address);
+    }
 }

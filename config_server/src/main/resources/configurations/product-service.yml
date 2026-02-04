@@ -3,10 +3,11 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/electric_shop_db
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5433}/${POSTGRES_DB:electric_shop_db}
     username: ${POSTGRES_USER:electric_user}
     password: ${POSTGRES_PASSWORD:electric_password}
     driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -16,6 +17,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         default_schema: products
+
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -24,7 +26,16 @@ spring:
     schemas: products
     default-schema: products
 
-# gRPC Server
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: true
+
+# gRPC Server Configuration
 grpc:
   server:
     port: 9090
@@ -36,4 +47,4 @@ project:
 
 image:
   base:
-    url: http://localhost:8080/images
+    url: ${IMAGE_BASE_URL:http://localhost:8080/images}

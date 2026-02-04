@@ -87,4 +87,12 @@ public class AddressController {
         addressService.deleteAddress(addressId, userId);
         return ResponseEntity.ok(OperationResponse.success("Address deleted successfully"));
     }
+
+    @GetMapping("/internal/{addressId}")
+    public ResponseEntity<AddressResponse> getAddressInternal(@PathVariable UUID addressId) {
+        // Tutaj wołasz metodę serwisu, która szuka TYLKO po ID (bez weryfikacji userId)
+        // Musisz mieć taką metodę w serwisie, np. findById(addressId)
+        AddressResponse address = addressService.getAddressByIdInternal(addressId);
+        return ResponseEntity.ok(address);
+    }
 }

@@ -8,8 +8,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import pl.electricshop.common.events.cart.CartCheckoutEvent;
+import pl.electricshop.common.events.product.ProductEvent;
 import pl.electricshop.product_service.api.dto.ProductDTO;
 import pl.electricshop.product_service.api.dto.response.ProductResponse;
 import pl.electricshop.product_service.errors.AppError;
@@ -36,6 +39,7 @@ public class ProductServiceImpl implements ProductService {
     private final CategoryRepository categoryRepository;
     private final FileServiceImpl fileService;
     private final ProductMapper productMapper;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("${project.image}")
     private String imagePath;
@@ -91,7 +95,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductDTO addProduct(String categoryNumber, ProductDTO productDTO) {
         Category category = fetchCategoryById(categoryNumber);
 
-        if (productRepository.existsByProductNameIgnoreCase(productDTO.getProductName())) {
+        if (!productRepository.existsByProductNameIgnoreCase(productDTO.getProductName())) {
             throw new APIException(AppError.ERROR_PRODUCT_EXISTS);
         }
 
@@ -110,6 +114,15 @@ public class ProductServiceImpl implements ProductService {
         Product savedProduct = productRepository.save(product);
         ProductDTO savedProductDTO = productMapper.toDTO(savedProduct);
         savedProductDTO.setImage(constructImageUrl(savedProduct.getImage()));
+
+        // 5. Tworzenie Eventu
+        ProductEvent event = new ProductEvent(
+                savedProductDTO.getProductNumber(),
+                savedProductDTO.getQuantity()
+        );
+
+
+        kafkaTemplate.send("product-add-topic", event);
         return savedProductDTO;
     }
 
@@ -123,6 +136,7 @@ public class ProductServiceImpl implements ProductService {
         Product updatedProduct = productRepository.save(product);
 
 
+        kafkaTemplate.send("product-update-topic", productMapper.toDTO(updatedProduct));
         return productMapper.toDTO(updatedProduct);
     }
 
@@ -135,7 +149,7 @@ public class ProductServiceImpl implements ProductService {
         String fileName;
         try {
             fileName = fileService.uploadImage(imagePath, image);
-        }catch (IOException e) {
+        } catch (IOException e) {
             throw new APIException("Image upload failed: " + e.getMessage());
         }
 
@@ -147,14 +161,13 @@ public class ProductServiceImpl implements ProductService {
     }
 
 
-
     @Override
     public void deleteProductById(String productNumber) {
         Product product = fetchProductById(productNumber);
         productRepository.delete(product);
     }
 
-    private  Pageable getPageDetails(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+    private Pageable getPageDetails(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
         if (pageNumber < 0 || pageSize <= 0) {
             throw new IllegalArgumentException("Page number must be non-negative and page size must be greater than 0");
         }
@@ -237,6 +250,7 @@ public class ProductServiceImpl implements ProductService {
         // Math.max(0, finalPrice)
         return finalPrice.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : finalPrice;
     }
+
     private Product fetchProductById(String productNumber) {
         return productRepository.findByProductNumber(productNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "productNumber", productNumber));
