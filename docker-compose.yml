@@ -4,6 +4,7 @@ services:
   # ============================================
 
   # PostgreSQL Database
+  # Limit: 256MB RAM 
   postgres:
     image: postgres:16-alpine
     container_name: electric_shop_postgres
@@ -17,6 +18,13 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - electric_network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 128M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U electric_user -d electric_shop_db"]
       interval: 10s
@@ -24,6 +32,7 @@ services:
       retries: 5
 
   # Redis Cache
+  # Limit: 128MB RAM 
   redis:
     image: redis:7-alpine
     container_name: electric_shop_redis
@@ -33,6 +42,13 @@ services:
       - redis_data:/data
     networks:
       - electric_network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          memory: 64M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -41,18 +57,28 @@ services:
     command: redis-server --appendonly yes
 
   # Zookeeper (required by Kafka)
+  # Limit: 256MB RAM
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
     container_name: electric_shop_zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      # Ogranicz heap JVM Zookeepera
+      KAFKA_HEAP_OPTS: "-Xms64m -Xmx128m"
     ports:
       - "2181:2181"
     volumes:
       - zookeeper_data:/var/lib/zookeeper/data
     networks:
       - electric_network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 128M
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "2181"]
       interval: 10s
@@ -60,6 +86,7 @@ services:
       retries: 5
 
   # Kafka Broker
+  # Limit: 512MB RAM 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     container_name: electric_shop_kafka
@@ -81,9 +108,18 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      # Ogranicz heap JVM Kafki — bez tego domyślnie bierze 1GB+
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx400m"
     depends_on:
       zookeeper:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 256M
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 30s
@@ -95,10 +131,9 @@ services:
   # ============================================
 
   # Config Server - Centralized Configuration
+  # Limit: 256MB RAM / JAVA_OPTS: max 192MB heap (75% z 256MB)
   config-server:
-    build:
-      context: .
-      dockerfile: config_server/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/config_server:latest
     container_name: electric_shop_config_server
     ports:
       - "8888:8888"
@@ -113,6 +148,16 @@ services:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=native,docker
+      # UseContainerSupport = JVM szanuje limit kontenera
+      # MaxRAMPercentage=75 = JVM używa max 75% z przydzielonego RAM (192MB z 256MB)
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 128M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health"]
       interval: 15s
@@ -125,10 +170,9 @@ services:
   # ============================================
 
   # Eureka Server - Service Discovery
+  # Limit: 256MB RAM
   eureka-server:
-    build:
-      context: .
-      dockerfile: eureka_server/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/eureka_server:latest
     container_name: electric_shop_eureka
     ports:
       - "8761:8761"
@@ -139,6 +183,14 @@ services:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 128M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8761/actuator/health"]
       interval: 15s
@@ -151,10 +203,9 @@ services:
   # ============================================
 
   # API Gateway - Central Entry Point
+  # Limit: 384MB RAM — gateway obsługuje cały ruch
   api-gateway:
-    build:
-      context: .
-      dockerfile: api_gateway/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/api_gateway:latest
     container_name: electric_shop_gateway
     ports:
       - "8080:8080"
@@ -172,6 +223,14 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_SECRET=${JWT_SECRET:-mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
       - GRPC_CLIENT_USER_SERVICE_ADDRESS=static://user-service:9091
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 384M
+        reservations:
+          memory: 192M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
       interval: 15s
@@ -184,10 +243,9 @@ services:
   # ============================================
 
   # User Service - Authentication & User Management
+  # Limit: 384MB RAM — JWT, gRPC, Kafka 
   user-service:
-    build:
-      context: .
-      dockerfile: user_service/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/user_service:latest
     container_name: electric_shop_user_service
     ports:
       - "8081:8081"
@@ -220,6 +278,14 @@ services:
       - JWT_EXPIRATION=${JWT_EXPIRATION:-3600000}
       - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-604800000}
       - HMAC_SECRET=${HMAC_SECRET:-xR9pL2mN8vQ4tY7wE3kS6jH1bC5fG9zX0aM4nP8qW2uV}
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 384M
+        reservations:
+          memory: 192M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
       interval: 15s
@@ -228,10 +294,9 @@ services:
       start_period: 30s
 
   # Notification Service - Email Notifications
+  # Limit: 256MB RAM — prosty Kafka consumer
   notification-service:
-    build:
-      context: .
-      dockerfile: notification_service/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/notification_service:latest
     container_name: electric_shop_notification_service
     ports:
       - "8082:8082"
@@ -259,6 +324,14 @@ services:
       - EMAIL_VERIFICATION_SUBJECT=${EMAIL_VERIFICATION_SUBJECT:-Weryfikacja email}
       - EMAIL_VERIFICATION_EXPIRY_MINUTES=${EMAIL_VERIFICATION_EXPIRY_MINUTES:-60}
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost:3000}
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 128M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
       interval: 15s
@@ -267,10 +340,9 @@ services:
       start_period: 30s
 
   # Product Service - Product Management
+  # Limit: 384MB RAM — gRPC server, JPA, Kafka
   product-service:
-    build:
-      context: .
-      dockerfile: product_service/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/product_service:latest
     container_name: electric_shop_product_service
     ports:
       - "8083:8083"
@@ -295,6 +367,14 @@ services:
       - POSTGRES_PASSWORD=electric_password
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 384M
+        reservations:
+          memory: 192M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8083/actuator/health"]
       interval: 15s
@@ -303,10 +383,9 @@ services:
       start_period: 30s
 
   # Cart Service - Shopping Cart Management
+  # Limit: 384MB RAM — gRPC client, Redis, JPA
   cart-service:
-    build:
-      context: .
-      dockerfile: cart_service/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/cart_service:latest
     container_name: electric_shop_cart_service
     ports:
       - "8084:8084"
@@ -338,6 +417,14 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - GRPC_CLIENT_PRODUCT_SERVICE_ADDRESS=static://product-service:9090
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 384M
+        reservations:
+          memory: 192M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8084/actuator/health"]
       interval: 15s
@@ -346,10 +433,9 @@ services:
       start_period: 30s
 
   # Order Service - Order Management
+  # Limit: 256MB RAM
   order-service:
-    build:
-      context: .
-      dockerfile: order_service/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/order_service:latest
     container_name: electric_shop_order_service
     ports:
       - "8085:8085"
@@ -374,6 +460,14 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 128M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8085/actuator/health"]
       interval: 15s
