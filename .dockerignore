@@ -1,9 +1,6 @@
 .git
 .idea
 .gradle
-**/build/
-**/node_modules/
-**/.env
 frontend/
 ai_service/
 *.md
