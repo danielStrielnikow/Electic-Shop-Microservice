@@ -20,7 +20,7 @@ permissions:
 env:
   # ghcr.io = GitHub Container Registry (darmowe, wbudowane w GitHub)
   # Przykład: ghcr.io/danielStrielnikow/electric_shop/user_service:latest
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/electric_shop
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner | lower }}/electric_shop
 
 jobs:
 
