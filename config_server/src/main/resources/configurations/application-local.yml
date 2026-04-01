@@ -1,0 +1,10 @@
+spring:
+  main:
+    lazy-initialization: true  # Beany ładowane dopiero gdy są potrzebne — oszczędza RAM przy starcie
+  jmx:
+    enabled: false             # Wyłącza JMX (monitorowanie) — niepotrzebne lokalnie
+
+logging:
+  level:
+    root: WARN                 # Mniej logów = mniej pracy dla JVM
+    pl.electricshop: DEBUG
