@@ -1,0 +1,165 @@
+# ============================================================
+# CD — Continuous Deployment
+# Odpala się tylko gdy zmiany trafiają na gałąź "main".
+#
+# SCHEMAT (2 etapy — deploy dodasz gdy będziesz miał VPS):
+#   [1] build-jars     — Gradle buduje wszystkie JAR-y (raz, na jednej maszynie)
+#         ↓
+#   [2] build-and-push — Docker pakuje gotowe JAR-y w obrazy i wysyła do ghcr.io
+# ============================================================
+name: CD — Build & Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write   # potrzebne do wysyłania obrazów do ghcr.io
+
+env:
+  # ghcr.io = GitHub Container Registry (darmowe, wbudowane w GitHub)
+  # Przykład: ghcr.io/danielStrielnikow/electric_shop/user_service:latest
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/electric_shop
+
+jobs:
+
+  # ----------------------------------------------------------
+  # ETAP 1: Zbuduj wszystkie JAR-y jeden raz
+  # Dzięki temu Docker nie musi kompilować kodu — tylko kopiuje plik
+  # ----------------------------------------------------------
+  build-jars:
+    name: "Gradle — Build all JARs"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4.2.3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # Buduj wszystkie serwisy naraz (bez ai_service)
+      - name: Build all JARs
+        run: |
+          ./gradlew \
+            :config_server:bootJar \
+            :eureka_server:bootJar \
+            :api_gateway:bootJar \
+            :user_service:bootJar \
+            :product_service:bootJar \
+            :cart_service:bootJar \
+            :order_service:bootJar \
+            :notification_service:bootJar \
+            --no-daemon -x test
+
+      # Wyślij wszystkie JAR-y jako "artefakt" — kolejny etap je pobierze
+      - name: Upload JARs as artifact
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: backend-jars
+          # Zbiera pliki: user_service/build/libs/*.jar, etc.
+          path: "**/build/libs/*.jar"
+          retention-days: 1  # tymczasowe — niepotrzebne po wdrożeniu
+
+  # ----------------------------------------------------------
+  # ETAP 2: Zbuduj i wypchnij obrazy Docker
+  # Każdy serwis budowany równolegle (matrix strategy)
+  # Teraz to jest szybkie — Docker tylko kopiuje gotowy JAR
+  # ----------------------------------------------------------
+  build-and-push:
+    name: "Docker — ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    needs: build-jars   # czekaj aż etap 1 się skończy
+
+    strategy:
+      matrix:
+        service:
+          - config_server
+          - eureka_server
+          - api_gateway
+          - user_service
+          - product_service
+          - cart_service
+          - order_service
+          - notification_service
+          - payment_service
+          - inventory_service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      # Pobierz JAR-y zbudowane w etapie 1
+      - name: Download JARs artifact
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: backend-jars
+
+      # Zaloguj się do GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Włącz cache warstw Docker (BuildKit)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Zbuduj i wypchnij obraz — szybko bo JAR już gotowy
+      # Tagi: :latest  i  :abc1234 (SHA commita — pozwala wrócić do konkretnej wersji)
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service }}/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # ----------------------------------------------------------
+  # ETAP 3: Deploy na VPS 
+  #   DEPLOY_HOST     — adres IP serwera, np. 88.12.34.56
+  #   DEPLOY_USER     — użytkownik SSH, np. ubuntu
+  #   DEPLOY_SSH_KEY  — zawartość pliku ~/.ssh/id_rsa (klucz prywatny)
+  #
+  # deploy:
+  #   name: "Deploy to VPS"
+  #   runs-on: ubuntu-latest
+  #   needs: build-and-push
+  #   steps:
+  #     - name: Deploy via SSH
+  #       uses: appleboy/ssh-action@v1
+  #       with:
+  #         host: ${{ secrets.DEPLOY_HOST }}
+  #         username: ${{ secrets.DEPLOY_USER }}
+  #         key: ${{ secrets.DEPLOY_SSH_KEY }}
+  #         script: |
+  #           cd ~/electric_shop
+  #           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+  #           git pull origin main
+  #           export GITHUB_REPOSITORY_OWNER=${{ github.repository_owner }}
+  #           docker compose pull
+  #           docker compose up -d --remove-orphans
+  #           docker image prune -f
+  # ----------------------------------------------------------
