@@ -164,7 +164,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 120s
 
   # ============================================
   # SERVICE DISCOVERY
@@ -198,7 +198,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 120s
 
   # ============================================
   # API GATEWAY
@@ -295,8 +295,8 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
       interval: 15s
       timeout: 10s
-      retries: 5
-      start_period: 30s
+      retries: 10
+      start_period: 120s
 
   # Notification Service - Email Notifications
   # Limit: 256MB RAM — prosty Kafka consumer
@@ -343,7 +343,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 120s
 
   # Product Service - Product Management
   # Limit: 384MB RAM — gRPC server, JPA, Kafka
@@ -388,7 +388,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 120s
 
   # Cart Service - Shopping Cart Management
   # Limit: 384MB RAM — gRPC client, Redis, JPA
@@ -439,7 +439,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 120s
 
   # Order Service - Order Management
   # Limit: 256MB RAM
@@ -484,7 +484,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 120s
 
   # Payment Service - Stripe Payments
   # Limit: 256MB RAM
@@ -531,7 +531,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 120s
 
   # Inventory Service - Stock Management
   # Limit: 256MB RAM
@@ -576,7 +576,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 120s
 
 # Volumes for data persistence
 volumes:
