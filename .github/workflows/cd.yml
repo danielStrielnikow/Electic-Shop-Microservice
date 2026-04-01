@@ -66,6 +66,8 @@ jobs:
             :cart_service:bootJar \
             :order_service:bootJar \
             :notification_service:bootJar \
+            :payment_service:bootJar \
+            :inventory_service:bootJar \
             --no-daemon -x test
 
       # Wyślij wszystkie JAR-y jako "artefakt" — kolejny etap je pobierze
