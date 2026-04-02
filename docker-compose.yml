@@ -443,7 +443,7 @@ services:
       start_period: 120s
 
   # Order Service - Order Management
-  # Limit: 256MB RAM
+  # Limit: 384MB RAM
   order-service:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/order_service:latest
     container_name: electric_shop_order_service
@@ -477,9 +477,9 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: 256M
+          memory: 384M
         reservations:
-          memory: 128M
+          memory: 192M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8085/actuator/health"]
       interval: 15s
@@ -488,7 +488,7 @@ services:
       start_period: 120s
 
   # Payment Service - Stripe Payments
-  # Limit: 256MB RAM
+  # Limit: 384MB RAM
   payment-service:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/payment_service:latest
     container_name: electric_shop_payment_service
@@ -524,9 +524,9 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: 256M
+          memory: 384M
         reservations:
-          memory: 128M
+          memory: 192M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8086/actuator/health"]
       interval: 15s
@@ -535,7 +535,7 @@ services:
       start_period: 120s
 
   # Inventory Service - Stock Management
-  # Limit: 256MB RAM
+  # Limit: 384MB RAM
   inventory-service:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/electric_shop/inventory_service:latest
     container_name: electric_shop_inventory_service
@@ -569,9 +569,9 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: 256M
+          memory: 384M
         reservations:
-          memory: 128M
+          memory: 192M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8087/actuator/health"]
       interval: 15s
