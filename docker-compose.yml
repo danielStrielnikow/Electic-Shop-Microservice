@@ -223,6 +223,7 @@ services:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - CONFIG_SERVER_URL=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_SECRET=${JWT_SECRET:-mZq7vN2jR8kL4pX9wE3hT6sY1bC5fG8aM4nP7qW0uV3xD9rK2gH5tY8eQ1jS6cF4mZq7vN2jR8kL4pX9wE3hT6sY}
       - GRPC_CLIENT_USER_SERVICE_ADDRESS=static://user-service:9091
@@ -238,8 +239,8 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
       interval: 15s
       timeout: 10s
-      retries: 5
-      start_period: 20s
+      retries: 10
+      start_period: 120s
 
   # ============================================
   # APPLICATION SERVICES
