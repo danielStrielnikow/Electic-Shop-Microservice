@@ -427,6 +427,7 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - GRPC_CLIENT_PRODUCT_SERVICE_ADDRESS=static://product-service:9090
+      - GRPC_CLIENT_INVENTORY_SERVICE_ADDRESS=static://inventory-service:9093
       - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0
     deploy:
       resources:
@@ -460,6 +461,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker
