@@ -2,9 +2,9 @@ name: CI — Build & Test
 
 on:
   push:
-    branches: ["**"]
+    branches-ignore: [main]  # Na main odpala się CD, nie CI
   pull_request:
-    branches: [main, develop]
+    branches: [main]          # Walidacja przed mergem do main
 
 jobs:
   backend:
