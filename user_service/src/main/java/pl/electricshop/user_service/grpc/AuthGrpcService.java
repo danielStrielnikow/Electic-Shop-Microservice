@@ -1,6 +1,7 @@
 package pl.electricshop.user_service.grpc;
 
 import io.grpc.stub.StreamObserver;
+import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
@@ -124,8 +125,8 @@ public class AuthGrpcService extends AuthServiceGrpc.AuthServiceImplBase {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
             userRepository.save(user);
 
-            // Send verification email
-            emailVerificationService.generateAndSendVerificationToken(user);
+            // Send verification email asynchronously (don't block registration response)
+            CompletableFuture.runAsync(() -> emailVerificationService.generateAndSendVerificationToken(user));
 
             AuthResponse response = AuthResponse.newBuilder()
                     .setSuccess(true)
