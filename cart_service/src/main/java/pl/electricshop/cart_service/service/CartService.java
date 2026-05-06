@@ -21,6 +21,7 @@ import pl.electricshop.grpc.ReservationResponse;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -46,20 +47,24 @@ public class CartService {
     public Cart addToCart(UUID userId, String productNumber, int quantity) {
         log.info("Dodawanie produktu {} (qty: {}) do koszyka użytkownika {}", productNumber, quantity, userId);
 
-        // 1. Pobierz dane produktu z Product Service
-        ProductCartResponse productData = cartGrpcService.getProductDetails(productNumber);
+        // Oba gRPC calle są niezależne — wykonujemy równolegle zamiast sekwencyjnie
+        CompletableFuture<ProductCartResponse> productFuture = CompletableFuture.supplyAsync(
+                () -> cartGrpcService.getProductDetails(productNumber)
+        );
+        CompletableFuture<ReservationResponse> reservationFuture = CompletableFuture.supplyAsync(
+                () -> inventoryGrpcClient.reserveProduct(productNumber, quantity, userId.toString())
+        );
+
+        CompletableFuture.allOf(productFuture, reservationFuture).join();
+
+        ProductCartResponse productData = productFuture.join();
         if (productData.getProductNumber().isEmpty()) {
             throw new IllegalArgumentException("Produkt " + productNumber + " nie istnieje");
         }
 
-        // 2. Rezerwacja w Inventory Service przez gRPC
-        ReservationResponse reservation = inventoryGrpcClient.reserveProduct(
-                productNumber,
-                quantity,
-                userId.toString()
-        );
-
+        ReservationResponse reservation = reservationFuture.join();
         if (!reservation.getSuccess()) {
+            // Produkt istnieje ale rezerwacja się nie powiodła — nie ma czego anulować
             throw new IllegalStateException("Nie udało się zarezerwować produktu: " + reservation.getMessage());
         }
 

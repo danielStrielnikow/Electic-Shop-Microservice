@@ -95,7 +95,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductDTO addProduct(String categoryNumber, ProductDTO productDTO) {
         Category category = fetchCategoryById(categoryNumber);
 
-        if (!productRepository.existsByProductNameIgnoreCase(productDTO.getProductName())) {
+        if (productRepository.existsByProductNameIgnoreCase(productDTO.getProductName())) {
             throw new APIException(AppError.ERROR_PRODUCT_EXISTS);
         }
 
