@@ -45,6 +45,7 @@ services:
       - "2181:2181"
     volumes:
       - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
     networks:
       - electric_network
     healthcheck:
@@ -89,6 +90,7 @@ volumes:
   redis_data:
   kafka_data:
   zookeeper_data:
+  zookeeper_log:
 
 networks:
   electric_network:
