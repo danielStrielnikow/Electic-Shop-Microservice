@@ -109,7 +109,7 @@ jobs:
       - name: Build changed JARs
         run: |
           SERVICES='${{ needs.detect-changes.outputs.services }}'
-          TASKS=$(echo $SERVICES | tr -d '[]"' | tr ',' ' ' | xargs -I{} echo ":{}:bootJar" | tr '\n' ' ')
+          TASKS=$(echo $SERVICES | tr -d '[]"' | tr ',' '\n' | xargs -I{} echo ":{}:bootJar" | tr '\n' ' ')
           echo "Building: $TASKS"
           ./gradlew $TASKS --no-daemon -x test
 
