@@ -6,6 +6,10 @@ plugins {
 
 description = 'API Gateway - Central entry point for Electric Shop microservices'
 
+repositories {
+    mavenCentral()
+}
+
 ext {
     set('springCloudVersion', "2024.0.0")
 }
